@@ -174,13 +174,7 @@ class TestBench(ConfigurationVisitor):
             Parse pragmas and test case names
             """
             pragmas = _find_pragmas(content, file_name)
-            test_case_names = _find_test_cases(content, file_name)
-
-            tests = [Test(name, file_name=file_name) for name in test_case_names]
-            if not tests:
-                # Implicit test
-                tests = [Test(None, file_name=file_name)]
-
+            tests = _find_tests(content, file_name)
             return pragmas, tests
 
         pragmas, tests = cached("test_bench.parse",
@@ -307,9 +301,12 @@ _RE_VHDL_TEST_CASE = re.compile(r'(\s|\()+run\s*\(\s*"(?P<name>.*?)"\s*\)', re.I
 _RE_VERILOG_TEST_CASE = re.compile(r'`TEST_CASE\s*\(\s*"(?P<name>.*?)"\s*\)')
 
 
-def _find_test_cases(code, file_name):
+def _find_tests(code, file_name):
     """
-    Finds all if run("something") strings in file
+    Finds all tests within a file including implicit tests where there
+    is only a test suite
+
+    returns a list to Test objects
     """
     is_verilog = file_type_of(file_name) in VERILOG_FILE_TYPES
     if is_verilog:
@@ -335,7 +332,12 @@ def _find_test_cases(code, file_name):
     if not_unique:
         raise RuntimeError('Duplicate test cases')
 
-    return test_cases
+    tests = [Test(name, file_name=file_name) for name in test_cases]
+    if not tests:
+        # Implicit test
+        tests = [Test(None, file_name=file_name)]
+
+    return tests
 
 
 _RE_PRAGMA = re.compile(r'vunit_pragma\s+([a-zA-Z0-9_]+)', re.IGNORECASE)

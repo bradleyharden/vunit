@@ -15,7 +15,8 @@ import unittest
 from os.path import join
 
 from vunit.test_bench import (TestBench,
-                              _remove_verilog_comments)
+                              _remove_verilog_comments,
+                              _find_tests)
 from vunit.ostools import write_file
 from vunit.test.mock_2or3 import mock
 from vunit.test.common import (with_tempdir,
@@ -140,33 +141,6 @@ if my_protected_variable.run("Test 10")
                                "lib.tb_module.Test 3",
                                "lib.tb_module.Test 7",
                                "lib.tb_module.Test 8"])
-
-    @with_tempdir
-    @mock.patch("vunit.test_bench.LOGGER")
-    def test_duplicate_tests_cause_error(self, mock_logger, tempdir):
-        design_unit = Entity('tb_entity',
-                             file_name=join(tempdir, "file.vhd"),
-                             contents='''\
-if run("Test_1")
---if run("Test_1")
-if run("Test_3")
-if run("Test_2")
-if run("Test_3")
-if run("Test_3")
-if run("Test_2")
-''')
-        design_unit.generic_names = ["runner_cfg"]
-        self.assertRaises(RuntimeError, TestBench, design_unit)
-
-        error_calls = mock_logger.error.call_args_list
-        self.assertEqual(len(error_calls), 2)
-        call0_args = error_calls[0][0]
-        self.assertIn("Test_3", call0_args)
-        self.assertIn(design_unit.file_name, call0_args)
-
-        call1_args = error_calls[1][0]
-        self.assertIn("Test_2", call1_args)
-        self.assertIn(design_unit.file_name, call1_args)
 
     @with_tempdir
     def test_keyerror_on_non_existent_test(self, tempdir):
@@ -395,6 +369,70 @@ if run("Test 2")
                          "a\n       \nb")
         self.assertEqual(_remove_verilog_comments("a\n/* foo\n \n */ \nb"),
                          "a\n      \n \n    \nb")
+
+    def test_find_explicit_tests_vhdl(self):
+        test1, test2 = _find_tests("""
+        -- if run("No test")
+        if run("Test 1")
+        if run("Test 2")
+        """, file_name="file_name.vhd")
+
+        self.assertEqual(test1.name, "Test 1")
+        self.assertEqual(test1.file_name, "file_name.vhd")
+
+        self.assertEqual(test2.name, "Test 2")
+        self.assertEqual(test2.file_name, "file_name.vhd")
+
+    def test_find_explicit_tests_verilog(self):
+        test1, test2 = _find_tests("""
+        /* `TEST_CASE("No test")
+
+        */
+        // `TEST_CASE("No test")
+        `TEST_CASE("Test 1")
+        `TEST_CASE("Test 2")
+        """, file_name="file_name.sv")
+
+        self.assertEqual(test1.name, "Test 1")
+        self.assertEqual(test1.file_name, "file_name.sv")
+
+        self.assertEqual(test2.name, "Test 2")
+        self.assertEqual(test2.file_name, "file_name.sv")
+
+    def test_find_implicit_test_vhdl(self):
+        test, = _find_tests("""
+        """, file_name="file_name.vhd")
+        self.assertEqual(test.name, None)
+        self.assertEqual(test.file_name, "file_name.vhd")
+
+    def test_find_implicit_test_verilog(self):
+        test, = _find_tests("""
+        """, file_name="file_name.sv")
+        self.assertEqual(test.name, None)
+        self.assertEqual(test.file_name, "file_name.sv")
+
+    @mock.patch("vunit.test_bench.LOGGER")
+    def test_duplicate_tests_cause_error(self, mock_logger):
+        file_name = "file.vhd"
+        self.assertRaises(RuntimeError, _find_tests, '''\
+if run("Test_1")
+--if run("Test_1")
+if run("Test_3")
+if run("Test_2")
+if run("Test_3")
+if run("Test_3")
+if run("Test_2")
+        ''', file_name=file_name)
+
+        error_calls = mock_logger.error.call_args_list
+        self.assertEqual(len(error_calls), 2)
+        call0_args = error_calls[0][0]
+        self.assertIn("Test_3", call0_args)
+        self.assertIn(file_name, call0_args)
+
+        call1_args = error_calls[1][0]
+        self.assertIn("Test_2", call1_args)
+        self.assertIn(file_name, call1_args)
 
     def assert_has_tests(self, test_list, tests):
         """
