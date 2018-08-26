@@ -37,7 +37,7 @@ class TestBench(ConfigurationVisitor):
 
         self._individual_tests = False
         self._configs = {}
-        self.test_cases = []
+        self._test_cases = []
 
         if design_unit.is_entity:
             design_unit.set_add_architecture_callback(self._add_architecture_callback)
@@ -61,6 +61,10 @@ class TestBench(ConfigurationVisitor):
     @property
     def library_name(self):
         return self.design_unit.library_name
+
+    @property
+    def tests(self):
+        return self._test_cases
 
     def get_default_config(self):
         """
@@ -100,9 +104,9 @@ class TestBench(ConfigurationVisitor):
             test_list = TestList()
 
         if self._individual_tests:
-            for test_case in self.test_cases:
+            for test_case in self._test_cases:
                 test_case.create_tests(simulator_if, elaborate_only, test_list)
-        elif not self.test_cases:
+        elif not self._test_cases:
             for config in self._get_configurations_to_run():
                 test_list.add_test(
                     IndependentSimTestCase(
@@ -122,13 +126,13 @@ class TestBench(ConfigurationVisitor):
 
     @property
     def test_case_names(self):
-        return [test.name for test in self.test_cases]
+        return [test.name for test in self._test_cases]
 
     def get_test_case(self, name):
         """
         Return the test case with name or raise KeyError
         """
-        for test_case in self.test_cases:
+        for test_case in self._test_cases:
             if test_case.name == name:
                 return test_case
         raise KeyError(name)
@@ -141,7 +145,7 @@ class TestBench(ConfigurationVisitor):
         """
         if self._individual_tests:
             configs = []
-            for test_case in self.test_cases:
+            for test_case in self._test_cases:
                 configs += test_case.get_configuration_dicts()
             return configs
 
@@ -186,16 +190,16 @@ class TestBench(ConfigurationVisitor):
         self._configs = OrderedDict({default_config.name: default_config})
 
         self._individual_tests = "run_all_in_same_sim" not in pragmas and len(test_case_names) > 0
-        self.test_cases = [TestCase(name,
-                                    self.design_unit,
-                                    self._individual_tests,
-                                    default_config.copy())
-                           for name in test_case_names]
+        self._test_cases = [TestConfigurationVisitor(name,
+                                                     self.design_unit,
+                                                     self._individual_tests,
+                                                     default_config.copy())
+                            for name in test_case_names]
 
 
-class TestCase(ConfigurationVisitor):
+class TestConfigurationVisitor(ConfigurationVisitor):
     """
-    A test case within a test bench
+    A means to creates configurations for single test
     """
     def __init__(self, name, design_unit, enable_configuration, default_config):
         ConfigurationVisitor.__init__(self)

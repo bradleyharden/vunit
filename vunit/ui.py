@@ -1510,8 +1510,8 @@ class TestBench(object):
         :returns: A list of :class:`.Test` objects
         """
         results = []
-        for test_case in self._test_bench.test_cases:
-            if not fnmatch(abspath(test_case.name), pattern):
+        for test_case in self._test_bench.tests:
+            if not fnmatch(test_case.name, pattern):
                 continue
 
             results.append(Test(test_case))
