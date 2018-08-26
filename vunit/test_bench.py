@@ -306,7 +306,7 @@ class TestConfigurationVisitor(ConfigurationVisitor):
 _RE_VHDL_TEST_CASE = re.compile(r'(\s|\()+run\s*\(\s*"(?P<name>.*?)"\s*\)', re.IGNORECASE)
 _RE_VERILOG_TEST_CASE = re.compile(r'`TEST_CASE\s*\(\s*"(?P<name>.*?)"\s*\)')
 _RE_VHDL_TEST_SUITE = re.compile(r'test_runner_setup\s*\(', re.IGNORECASE)
-_RE_VERILOG_TEST_SUITE = re.compile(r'`TEST_SUITE\s +')
+_RE_VERILOG_TEST_SUITE = re.compile(r'`TEST_SUITE\b')
 
 
 def _get_line_offsets(code):

@@ -455,8 +455,7 @@ if run("Test 2")
         with mock.patch("vunit.test_bench.LOGGER") as logger:
             test, = _find_tests("""\
 
-            `TEST_SUITE
-            """, file_name="file_name.sv")
+            `TEST_SUITE""", file_name="file_name.sv")
             self.assertEqual(test.name, None)
             self.assertEqual(test.file_name, "file_name.sv")
             self.assertEqual(test.lineno, 2)
