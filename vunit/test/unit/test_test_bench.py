@@ -17,7 +17,8 @@ from os.path import join
 from vunit.test_bench import TestBench
 from vunit.ostools import write_file
 from vunit.test.mock_2or3 import mock
-from vunit.test.common import with_tempdir
+from vunit.test.common import (with_tempdir,
+                               get_vhdl_test_bench)
 
 
 class TestTestBench(unittest.TestCase):
@@ -358,13 +359,9 @@ if run("Test 2")
         file_name = join(tempdir, "file.vhd")
 
         for same_sim in [True, False]:
-            contents = '''
-            if run("Test 1")
-            if run("Test 2")
-            '''
-
-            if same_sim:
-                contents += "-- vunit_pragma run_all_in_same_sim\n"
+            contents = get_vhdl_test_bench("tb_entity",
+                                           tests=["Test 1", "Test 2"],
+                                           same_sim=same_sim)
 
             design_unit = Entity('tb_entity',
                                  file_name=file_name,

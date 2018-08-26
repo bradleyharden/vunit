@@ -144,10 +144,13 @@ def with_tempdir(func):
     return new_function
 
 
-def create_vhdl_test_bench_file(test_bench_name, file_name, tests=None):
+def get_vhdl_test_bench(test_bench_name,
+                        tests=None,
+                        same_sim=False):
     """
-    Create and a temporary file containing the same source code
-    but with different entity names depending on the index
+    Create a valid VUnit test bench
+
+    returns a string
     """
 
     tests_contents = ""
@@ -187,5 +190,20 @@ end architecture;
 """.format(test_bench_name=test_bench_name,
            tests_contents=tests_contents)
 
+    if same_sim:
+        contents += "-- vunit_pragma run_all_in_same_sim\n"
+
+    return contents
+
+
+def create_vhdl_test_bench_file(test_bench_name,
+                                file_name,
+                                tests=None,
+                                same_sim=False):
+    """
+    Create a valid VUnit test bench and writes it to file_name
+    """
     with open(file_name, "w") as fptr:
-        fptr.write(contents)
+        fptr.write(get_vhdl_test_bench(test_bench_name=test_bench_name,
+                                       tests=tests,
+                                       same_sim=same_sim))
