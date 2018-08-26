@@ -354,6 +354,37 @@ if run("Test 2")
                          {"name": "value"})
 
     @with_tempdir
+    def test_locations(self, tempdir):
+        file_name = join(tempdir, "file.vhd")
+
+        for same_sim in [True, False]:
+            contents = '''
+            if run("Test 1")
+            if run("Test 2")
+            '''
+
+            if same_sim:
+                contents += "-- vunit_pragma run_all_in_same_sim\n"
+
+            design_unit = Entity('tb_entity',
+                                 file_name=file_name,
+                                 contents=contents)
+            design_unit.generic_names = ["runner_cfg", "name"]
+            test_bench = TestBench(design_unit)
+            test_suites = self.create_tests(test_bench)
+
+            if same_sim:
+                self.assertEqual(len(test_suites), 1)
+            else:
+                self.assertEqual(len(test_suites), 2)
+
+            self.assertEqual(set(item
+                                 for test_suite in test_suites
+                                 for item in test_suite.test_locations.items()),
+                             set([("lib.tb_entity.Test 1", file_name),
+                                  ("lib.tb_entity.Test 2", file_name)]))
+
+    @with_tempdir
     def test_fail_on_unknown_sim_option(self, tempdir):
         design_unit = Entity('tb_entity',
                              file_name=join(tempdir, "file.vhd"))

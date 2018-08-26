@@ -30,7 +30,7 @@ class IndependentSimTestCase(object):
             # JUnit XML test reports wants three dotted name hierarchies
             self._name += ".all"
 
-        self._test_name = test.name
+        self._test = test
 
         self._run = TestRun(simulator_if=simulator_if,
                             config=config,
@@ -42,12 +42,19 @@ class IndependentSimTestCase(object):
     def name(self):
         return self._name
 
+    @property
+    def location(self):
+        """
+        Returns the location of the test (file_name)
+        """
+        return self._test.file_name
+
     def run(self, *args, **kwargs):
         """
         Run the test case using the output_path
         """
         results = self._run.run(*args, **kwargs)
-        return results[self._test_name] == PASSED
+        return results[self._test.name] == PASSED
 
 
 class SameSimTestSuite(object):
@@ -72,6 +79,14 @@ class SameSimTestSuite(object):
     def test_names(self):
         return [_full_name(self._name, test.name)
                 for test in self._tests]
+
+    @property
+    def test_locations(self):
+        """
+        Returns a dictionary mapping full test name to location (file_name)
+        """
+        return {_full_name(self._name, test.name): test.file_name
+                for test in self._tests}
 
     @property
     def name(self):

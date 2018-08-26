@@ -176,10 +176,10 @@ class TestBench(ConfigurationVisitor):
             pragmas = _find_pragmas(content, file_name)
             test_case_names = _find_test_cases(content, file_name)
 
-            tests = [Test(name) for name in test_case_names]
+            tests = [Test(name, file_name=file_name) for name in test_case_names]
             if not tests:
                 # Implicit test
-                tests = [Test(None)]
+                tests = [Test(None, file_name=file_name)]
 
             return pragmas, tests
 
@@ -226,12 +226,17 @@ class Test(object):
          Implicit tests are those when there are no tests in the test bench, just the test suite
     """
 
-    def __init__(self, name):
+    def __init__(self, name, file_name):
         self._name = name
+        self._file_name = file_name
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def file_name(self):
+        return self._file_name
 
     @property
     def is_explicit(self):
