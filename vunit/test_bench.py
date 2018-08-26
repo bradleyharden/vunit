@@ -220,9 +220,10 @@ class Test(object):
          Implicit tests are those when there are no tests in the test bench, just the test suite
     """
 
-    def __init__(self, name, file_name):
+    def __init__(self, name, file_name, lineno):
         self._name = name
         self._file_name = file_name
+        self._lineno = lineno
 
     @property
     def name(self):
@@ -231,6 +232,10 @@ class Test(object):
     @property
     def file_name(self):
         return self._file_name
+
+    @property
+    def lineno(self):
+        return self._lineno
 
     @property
     def is_explicit(self):
@@ -299,6 +304,55 @@ class TestConfigurationVisitor(ConfigurationVisitor):
 
 _RE_VHDL_TEST_CASE = re.compile(r'(\s|\()+run\s*\(\s*"(?P<name>.*?)"\s*\)', re.IGNORECASE)
 _RE_VERILOG_TEST_CASE = re.compile(r'`TEST_CASE\s*\(\s*"(?P<name>.*?)"\s*\)')
+_RE_VHDL_TEST_SUITE = re.compile(r'test_runner_setup\s*\(', re.IGNORECASE)
+_RE_VERILOG_TEST_SUITE = re.compile(r'`TEST_SUITE\s +')
+
+
+def _get_line_offsets(code):
+    """
+    Returns a list with one entry per line returning the offset in the
+    code where it starts
+    """
+
+    offset = 0
+    offsets = []
+    for line in code.splitlines():
+        offsets.append(offset)
+        offset += len(line) + 1
+
+    return offsets
+
+
+def _lookup_lineno(offset, offsets):
+    """
+    Convert offset into line number
+    """
+    for lineno, line_offset in enumerate(offsets):
+        if offset < line_offset:
+            return lineno
+
+    return len(offsets)
+
+
+def _check_duplicate_tests(tests):
+    """
+    Check for duplicate tests and raise RuntimeError
+    """
+    known_tests = {}
+    found_duplicates = False
+    for test in tests:
+        if test.name in known_tests:
+            known_test = known_tests[test.name]
+            LOGGER.error('Duplicate test "%s" in %s line %i previously defined on line %i',
+                         test.name,
+                         test.file_name, test.lineno,
+                         known_test.lineno)
+            found_duplicates = True
+        else:
+            known_tests[test.name] = test
+
+    if found_duplicates:
+        raise RuntimeError('Duplicate tests where found')
 
 
 def _find_tests(code, file_name):
@@ -309,33 +363,37 @@ def _find_tests(code, file_name):
     returns a list to Test objects
     """
     is_verilog = file_type_of(file_name) in VERILOG_FILE_TYPES
+    line_offsets = _get_line_offsets(code)
+
     if is_verilog:
         code = _remove_verilog_comments(code)
         regexp = _RE_VERILOG_TEST_CASE
+        suite_regexp = _RE_VERILOG_TEST_SUITE
     else:
         code = remove_vhdl_comments(code)
         regexp = _RE_VHDL_TEST_CASE
+        suite_regexp = _RE_VHDL_TEST_SUITE
 
-    test_cases = [match.group("name")
-                  for match in regexp.finditer(code)]
+    tests = [Test(name=match.group("name"),
+                  file_name=file_name,
+                  lineno=_lookup_lineno(match.start("name"), line_offsets))
+             for match in regexp.finditer(code)]
 
-    unique = set()
-    not_unique = set()
-    for test_case in test_cases:
-        if test_case in unique and test_case not in not_unique:
-            # @TODO line number information could be useful
-            LOGGER.error('Duplicate test case "%s" in %s',
-                         test_case, file_name)
-            not_unique.add(test_case)
-        unique.add(test_case)
+    _check_duplicate_tests(tests)
 
-    if not_unique:
-        raise RuntimeError('Duplicate test cases')
-
-    tests = [Test(name, file_name=file_name) for name in test_cases]
     if not tests:
-        # Implicit test
-        tests = [Test(None, file_name=file_name)]
+        # Implicit test, use the test suite start as lineno
+        match = suite_regexp.search(code)
+
+        if match:
+            lineno = _lookup_lineno(match.start(0), line_offsets)
+        else:
+            LOGGER.warning("Found no tests or test suite within %s", file_name)
+            lineno = 1
+
+        tests = [Test(None,
+                      file_name=file_name,
+                      lineno=lineno)]
 
     return tests
 
