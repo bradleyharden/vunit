@@ -430,7 +430,7 @@ if run("Test 2")
             self.assertEqual(test.name, None)
             self.assertEqual(test.file_name, "file_name.vhd")
             self.assertEqual(test.lineno, 2)
-            logger.warning.assert_not_called()
+            assert not logger.warning.called
 
         with mock.patch("vunit.test_bench.LOGGER") as logger:
             test, = _find_tests("""\
@@ -440,7 +440,7 @@ if run("Test 2")
             self.assertEqual(test.name, None)
             self.assertEqual(test.file_name, "file_name.vhd")
             self.assertEqual(test.lineno, 1)
-            logger.warning.assert_called()
+            assert logger.warning.called
 
         with mock.patch("vunit.test_bench.LOGGER") as logger:
             test, = _find_tests("""\
@@ -449,7 +449,7 @@ if run("Test 2")
             self.assertEqual(test.name, None)
             self.assertEqual(test.file_name, "file_name.vhd")
             self.assertEqual(test.lineno, 1)
-            logger.warning.assert_called()
+            assert logger.warning.called
 
     def test_find_implicit_test_verilog(self):
         with mock.patch("vunit.test_bench.LOGGER") as logger:
@@ -460,7 +460,7 @@ if run("Test 2")
             self.assertEqual(test.name, None)
             self.assertEqual(test.file_name, "file_name.sv")
             self.assertEqual(test.lineno, 2)
-            logger.warning.assert_not_called()
+            assert not logger.warning.called
 
         with mock.patch("vunit.test_bench.LOGGER") as logger:
             test, = _find_tests("""\
@@ -469,7 +469,7 @@ if run("Test 2")
             self.assertEqual(test.name, None)
             self.assertEqual(test.file_name, "file_name.sv")
             self.assertEqual(test.lineno, 1)
-            logger.warning.assert_called()
+            assert logger.warning.called
 
         with mock.patch("vunit.test_bench.LOGGER") as logger:
             test, = _find_tests("""\
@@ -477,7 +477,7 @@ if run("Test 2")
             self.assertEqual(test.name, None)
             self.assertEqual(test.file_name, "file_name.sv")
             self.assertEqual(test.lineno, 1)
-            logger.warning.assert_called()
+            assert logger.warning.called
 
     @mock.patch("vunit.test_bench.LOGGER")
     def test_duplicate_tests_cause_error(self, mock_logger):
