@@ -18,25 +18,25 @@ class IndependentSimTestCase(object):
     """
     A test case to be run in an independent simulation
     """
-    def __init__(self, test_case, config, simulator_if, elaborate_only=False):
+    def __init__(self, test, config, simulator_if, elaborate_only=False):
         self._name = "%s.%s" % (config.library_name, config.design_unit_name)
 
         if not config.is_default:
             self._name += "." + config.name
 
-        if test_case is not None:
-            self._name += "." + test_case
+        if test.is_explicit:
+            self._name += "." + test.name
         elif config.is_default:
             # JUnit XML test reports wants three dotted name hierarchies
             self._name += ".all"
 
-        self._test_case = test_case
+        self._test_name = test.name
 
         self._run = TestRun(simulator_if=simulator_if,
                             config=config,
                             elaborate_only=elaborate_only,
                             test_suite_name=self._name,
-                            test_cases=[test_case])
+                            test_cases=[test.name])
 
     @property
     def name(self):
@@ -47,7 +47,7 @@ class IndependentSimTestCase(object):
         Run the test case using the output_path
         """
         results = self._run.run(*args, **kwargs)
-        return results[self._test_case] == PASSED
+        return results[self._test_name] == PASSED
 
 
 class SameSimTestSuite(object):
@@ -55,7 +55,7 @@ class SameSimTestSuite(object):
     A test suite where multiple test cases are run within the same simulation
     """
 
-    def __init__(self, test_cases, config, simulator_if, elaborate_only=False):
+    def __init__(self, tests, config, simulator_if, elaborate_only=False):
         self._name = "%s.%s" % (config.library_name, config.design_unit_name)
 
         if not config.is_default:
@@ -65,7 +65,7 @@ class SameSimTestSuite(object):
                             config=config,
                             elaborate_only=elaborate_only,
                             test_suite_name=self._name,
-                            test_cases=test_cases)
+                            test_cases=[test.name for test in tests])
 
     @property
     def test_names(self):

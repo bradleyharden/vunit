@@ -107,11 +107,11 @@ class TestBench(ConfigurationVisitor):
         if self._individual_tests:
             for test_case in self._test_cases:
                 test_case.create_tests(simulator_if, elaborate_only, test_list)
-        elif not self._test_cases:
+        elif self._implicit_test:
             for config in self._get_configurations_to_run():
                 test_list.add_test(
                     IndependentSimTestCase(
-                        test_case=None,
+                        test=self._implicit_test,
                         config=config,
                         simulator_if=simulator_if,
                         elaborate_only=elaborate_only))
@@ -119,7 +119,7 @@ class TestBench(ConfigurationVisitor):
             for config in self._get_configurations_to_run():
                 test_list.add_suite(
                     SameSimTestSuite(
-                        test_cases=self.test_case_names,
+                        tests=[test.test for test in self._test_cases],
                         config=config,
                         simulator_if=simulator_if,
                         elaborate_only=elaborate_only))
@@ -254,6 +254,10 @@ class TestConfigurationVisitor(ConfigurationVisitor):
     def name(self):
         return self._test.name
 
+    @property
+    def test(self):
+        return self._test
+
     def get_default_config(self):
         """
         Get the default configuration of this test case
@@ -288,7 +292,7 @@ class TestConfigurationVisitor(ConfigurationVisitor):
         for config in self._get_configurations_to_run():
             test_list.add_test(
                 IndependentSimTestCase(
-                    test_case=self._test.name,
+                    test=self._test,
                     config=config,
                     simulator_if=simulator_if,
                     elaborate_only=elaborate_only))
