@@ -415,11 +415,11 @@ Listed 2 files""".splitlines()))
                               ("lib2", abspath(file_name2))]))
 
         # Check the contents of the tests section
-        self.assertEqual(set((item["name"],)
+        self.assertEqual(set((item["name"], item["file_name"])
                              for item in data["tests"]),
-                         set([("lib1.tb_foo.all",),
-                              ("lib2.tb_bar.Test one",),
-                              ("lib2.tb_bar.Test two",)]))
+                         set([("lib1.tb_foo.all", file_name1),
+                              ("lib2.tb_bar.Test one", file_name2),
+                              ("lib2.tb_bar.Test two", file_name2)]))
 
     def test_library_attributes(self):
         ui = self._create_ui()

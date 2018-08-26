@@ -872,9 +872,12 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
             files.append(dict(name=abspath(source_file.name),
                               library_name=source_file.library.name))
 
-        tests = [dict(name=name)
-                 for test_suite in self._create_tests(simulator_if=None)
-                 for name in test_suite.test_names]
+        tests = []
+        for test_suite in self._create_tests(simulator_if=None):
+            test_locations = test_suite.test_locations
+            for name in test_suite.test_names:
+                tests.append(dict(name=name,
+                                  file_name=test_locations[name]))
 
         json_data = dict(
             # The version of the JSON export data format
