@@ -45,9 +45,9 @@ class IndependentSimTestCase(object):
     @property
     def location(self):
         """
-        Returns the location of the test (file_name)
+        Returns the location of the test (file_name, lineno)
         """
-        return self._test.file_name
+        return (self._test.file_name, self._test.lineno)
 
     def run(self, *args, **kwargs):
         """
@@ -83,9 +83,9 @@ class SameSimTestSuite(object):
     @property
     def test_locations(self):
         """
-        Returns a dictionary mapping full test name to location (file_name)
+        Returns a dictionary mapping full test name to location (file_name, lineno)
         """
-        return {_full_name(self._name, test.name): test.file_name
+        return {_full_name(self._name, test.name): (test.file_name, test.lineno)
                 for test in self._tests}
 
     @property

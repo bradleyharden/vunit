@@ -170,7 +170,7 @@ def get_vhdl_test_bench(test_bench_name,
             if idx == last_idx:
                 tests_contents += '    endif;\n'
 
-    contents = """
+    contents = """\
 library vunit_lib;
 context vunit_lib.vunit_context;
 

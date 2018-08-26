@@ -861,7 +861,7 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
         print("Listed %i tests" % test_list.num_tests)
         return True
 
-    def _main_export_json(self, file_name):
+    def _main_export_json(self, json_file_name):
         """
         Main function when exporting to JSON
         """
@@ -876,8 +876,10 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
         for test_suite in self._create_tests(simulator_if=None):
             test_locations = test_suite.test_locations
             for name in test_suite.test_names:
+                file_name, lineno = test_locations[name]
                 tests.append(dict(name=name,
-                                  file_name=test_locations[name]))
+                                  file_name=file_name,
+                                  lineno=lineno))
 
         json_data = dict(
             # The version of the JSON export data format
@@ -889,7 +891,7 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
             # The list of all tests
             tests=tests)
 
-        with open(file_name, "w") as fptr:
+        with open(json_file_name, "w") as fptr:
             json.dump(json_data,
                       fptr,
                       sort_keys=True,
