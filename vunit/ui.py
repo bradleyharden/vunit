@@ -216,6 +216,7 @@ import csv
 import sys
 import traceback
 import logging
+import json
 import os
 from os.path import exists, abspath, join, basename, splitext, normpath, dirname
 from glob import glob
@@ -790,6 +791,9 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
         Base vunit main function without performing exit
         """
 
+        if self._args.export_json is not None:
+            return self._main_export_json(self._args.export_json)
+
         if self._args.list:
             return self._main_list_only()
 
@@ -856,6 +860,33 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
             for name in test_suite.test_cases:
                 print(name)
         print("Listed %i tests" % test_list.num_tests())
+        return True
+
+    def _main_export_json(self, file_name):
+        """
+        Main function when exporting to JSON
+        """
+
+        file_objects = self.get_compile_order()
+        files = []
+        for source_file in file_objects:
+            files.append(dict(name=abspath(source_file.name),
+                              library_name=source_file.library.name))
+
+        json_data = dict(
+            # The version of the JSON export data format
+            export_format_version=1,
+
+            # The set of files added to the project
+            files=files)
+
+        with open(file_name, "w") as fptr:
+            json.dump(json_data,
+                      fptr,
+                      sort_keys=True,
+                      indent=4,
+                      separators=(',', ': '))
+
         return True
 
     def _main_list_files_only(self):

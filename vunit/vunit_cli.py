@@ -167,6 +167,10 @@ def _create_argument_parser(description=None, for_documentation=False):
                         nargs="?",
                         help="Enable code coverage. Works with ModelSim and RivieraPRO.")
 
+    parser.add_argument("--export-json",
+                        default=None,
+                        help="Export project information to a JSON file. Used for IDE integration.")
+
     parser.add_argument('--version', action='version', version=version())
 
     SIMULATOR_FACTORY.add_arguments(parser)
