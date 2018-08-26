@@ -313,7 +313,7 @@ def _find_test_cases(code, file_name):
     """
     is_verilog = file_type_of(file_name) in VERILOG_FILE_TYPES
     if is_verilog:
-        code = remove_verilog_comments(code)
+        code = _remove_verilog_comments(code)
         regexp = _RE_VERILOG_TEST_CASE
     else:
         code = remove_vhdl_comments(code)
@@ -363,8 +363,18 @@ VERILOG_REMOVE_COMMENT_RE = re.compile(r'(//[^\n]*)|(/\*.*?\*/)',
                                        re.DOTALL)
 
 
-def remove_verilog_comments(code):
+def _comment_repl(match):
+    """
+    Replace comment with equal amount of whitespace to make
+    lexical position unaffected
+    """
+    text = match.group(0)
+    return "".join(" " if c != "\n" else "\n"
+                   for c in text)
+
+
+def _remove_verilog_comments(code):
     """
     Remove all verilog comments
     """
-    return VERILOG_REMOVE_COMMENT_RE.sub('', code)
+    return VERILOG_REMOVE_COMMENT_RE.sub(_comment_repl, code)

@@ -14,7 +14,8 @@ Tests the test test_bench module
 import unittest
 from os.path import join
 
-from vunit.test_bench import TestBench
+from vunit.test_bench import (TestBench,
+                              _remove_verilog_comments)
 from vunit.ostools import write_file
 from vunit.test.mock_2or3 import mock
 from vunit.test.common import (with_tempdir,
@@ -388,6 +389,12 @@ if run("Test 2")
         design_unit.generic_names = ["runner_cfg"]
         test_bench = TestBench(design_unit)
         self.assertRaises(ValueError, test_bench.set_sim_option, "unknown", "value")
+
+    def test_remove_verilog_comments(self):
+        self.assertEqual(_remove_verilog_comments("a\n// foo \nb"),
+                         "a\n       \nb")
+        self.assertEqual(_remove_verilog_comments("a\n/* foo\n \n */ \nb"),
+                         "a\n      \n \n    \nb")
 
     def assert_has_tests(self, test_list, tests):
         """
