@@ -11,6 +11,7 @@ Contains classes to represent a test bench and test cases
 import logging
 from os.path import basename
 import re
+import bisect
 from collections import OrderedDict
 from vunit.ostools import file_exists
 from vunit.cached import cached
@@ -327,11 +328,7 @@ def _lookup_lineno(offset, offsets):
     """
     Convert offset into line number
     """
-    for lineno, line_offset in enumerate(offsets):
-        if offset < line_offset:
-            return lineno
-
-    return len(offsets)
+    return bisect.bisect(offsets, offset)
 
 
 def _check_duplicate_tests(tests):
