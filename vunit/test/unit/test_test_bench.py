@@ -375,6 +375,7 @@ if run("Test 2")
                 self.assertEqual(test1.test_names, list(test_cases))
             else:
                 self.assertEqual(test1.name, test2)
+                self.assertEqual(test1.test_names, [test2])
 
     @staticmethod
     def create_tests(test_bench):
