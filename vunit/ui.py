@@ -856,10 +856,9 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
         Main function when only listing test cases
         """
         test_list = self._create_tests(simulator_if=None)
-        for test_suite in test_list:
-            for name in test_suite.test_cases:
-                print(name)
-        print("Listed %i tests" % test_list.num_tests())
+        for test_name in test_list.test_names:
+            print(test_name)
+        print("Listed %i tests" % test_list.num_tests)
         return True
 
     def _main_export_json(self, file_name):
@@ -875,7 +874,7 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
 
         tests = [dict(name=name)
                  for test_suite in self._create_tests(simulator_if=None)
-                 for name in test_suite.test_cases]
+                 for name in test_suite.test_names]
 
         json_data = dict(
             # The version of the JSON export data format

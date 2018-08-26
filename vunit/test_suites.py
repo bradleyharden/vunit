@@ -68,8 +68,8 @@ class SameSimTestSuite(object):
                             test_cases=test_cases)
 
     @property
-    def test_cases(self):
-        return self._run.test_cases
+    def test_names(self):
+        return self._run.test_names
 
     @property
     def name(self):
@@ -109,7 +109,7 @@ class TestRun(object):
         return len(self._test_cases) > 0
 
     @property
-    def test_cases(self):
+    def test_names(self):
         return [_full_name(self._test_suite_name, test_case)
                 for test_case in self._test_cases]
 

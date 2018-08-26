@@ -372,7 +372,7 @@ if run("Test 2")
             if isinstance(test2, tuple):
                 name, test_cases = test2
                 self.assertEqual(test1.name, name)
-                self.assertEqual(test1.test_cases, list(test_cases))
+                self.assertEqual(test1.test_names, list(test_cases))
             else:
                 self.assertEqual(test1.name, test2)
 
