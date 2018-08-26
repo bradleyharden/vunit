@@ -61,6 +61,7 @@ class SameSimTestSuite(object):
         if not config.is_default:
             self._name += "." + config.name
 
+        self._tests = tests
         self._run = TestRun(simulator_if=simulator_if,
                             config=config,
                             elaborate_only=elaborate_only,
@@ -69,14 +70,21 @@ class SameSimTestSuite(object):
 
     @property
     def test_names(self):
-        return self._run.test_names
+        return [_full_name(self._name, test.name)
+                for test in self._tests]
 
     @property
     def name(self):
         return self._name
 
     def keep_matches(self, test_filter):
-        return self._run.keep_matches(test_filter)
+        """
+        Keep tests which pattern return False if no remaining tests
+        """
+        self._tests = [test for test in self._tests
+                       if test_filter(_full_name(self.name, test.name))]
+        self._run.set_test_cases([test.name for test in self._tests])
+        return len(self._tests) > 0
 
     def run(self, *args, **kwargs):
         """
@@ -100,18 +108,8 @@ class TestRun(object):
         self._test_suite_name = test_suite_name
         self._test_cases = test_cases
 
-    def keep_matches(self, test_filter):
-        """
-        Keep tests which pattern return False if no remaining tests
-        """
-        self._test_cases = [name for name in self._test_cases
-                            if test_filter(_full_name(self._test_suite_name, name))]
-        return len(self._test_cases) > 0
-
-    @property
-    def test_names(self):
-        return [_full_name(self._test_suite_name, test_case)
-                for test_case in self._test_cases]
+    def set_test_cases(self, test_cases):
+        self._test_cases = test_cases
 
     def run(self, output_path, read_output):
         """
