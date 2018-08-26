@@ -412,7 +412,7 @@ Listed 2 files""".splitlines()))
                    for value in data["export_format_version"].values())
 
         # Check the contents of the files section
-        self.assertEqual(set((item["library_name"], item["name"])
+        self.assertEqual(set((item["library_name"], item["file_name"])
                              for item in data["files"]),
                          set([("lib1", abspath(file_name1)),
                               ("lib2", abspath(file_name2))]))

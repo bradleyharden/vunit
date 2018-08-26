@@ -869,7 +869,7 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
         file_objects = self.get_compile_order()
         files = []
         for source_file in file_objects:
-            files.append(dict(name=abspath(source_file.name),
+            files.append(dict(file_name=abspath(source_file.name),
                               library_name=source_file.library.name))
 
         tests = []
