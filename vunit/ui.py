@@ -882,8 +882,8 @@ avoid location preprocessing of other functions sharing name with a VUnit log or
                                   lineno=lineno))
 
         json_data = dict(
-            # The version of the JSON export data format
-            export_format_version=1,
+            # The semantic version (https://semver.org/) of the JSON export data format
+            export_format_version=dict(major=1, minor=0, patch=0),
 
             # The set of files added to the project
             files=files,

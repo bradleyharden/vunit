@@ -405,8 +405,11 @@ Listed 2 files""".splitlines()))
                               "files",
                               "tests"]))
 
-        # Check that data format is an integer
-        self.assertEqual(type(data["export_format_version"]), int)
+        # Check that export format is semantic version with integer values
+        self.assertEqual(set(data["export_format_version"].keys()),
+                         set(("major", "minor", "patch")))
+        assert all(isinstance(value, int)
+                   for value in data["export_format_version"].values())
 
         # Check the contents of the files section
         self.assertEqual(set((item["library_name"], item["name"])
