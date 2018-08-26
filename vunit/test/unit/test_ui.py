@@ -21,7 +21,9 @@ from shutil import rmtree
 from vunit.ui import VUnit
 from vunit.project import VHDL_EXTENSIONS, VERILOG_EXTENSIONS
 from vunit.test.mock_2or3 import mock
-from vunit.test.common import set_env, with_tempdir
+from vunit.test.common import (set_env,
+                               with_tempdir,
+                               create_vhdl_test_bench_file)
 from vunit.ostools import renew_path
 from vunit.builtins import add_verilog_include_dir
 from vunit.simulator_interface import SimulatorInterface
@@ -382,9 +384,14 @@ Listed 2 files""".splitlines()))
         ui = self._create_ui("--export-json", json_file)
         lib1 = ui.add_library("lib1")
         lib2 = ui.add_library("lib2")
-        file_name1 = self.create_entity_file()
-        file_name2 = self.create_entity_file()
+
+        file_name1 = join(tempdir, "tb_foo.vhd")
+        create_vhdl_test_bench_file("tb_foo", file_name1)
         lib1.add_source_file(file_name1)
+
+        file_name2 = join(tempdir, "tb_bar.vhd")
+        create_vhdl_test_bench_file("tb_bar", file_name2,
+                                    tests=["Test one", "Test two"])
         lib2.add_source_file(file_name2)
 
         self._run_main(ui)
@@ -394,7 +401,9 @@ Listed 2 files""".splitlines()))
 
         # Check known keys
         self.assertEqual(set(data.keys()),
-                         set(["export_format_version", "files"]))
+                         set(["export_format_version",
+                              "files",
+                              "tests"]))
 
         # Check that data format is an integer
         self.assertEqual(type(data["export_format_version"]), int)
@@ -404,6 +413,13 @@ Listed 2 files""".splitlines()))
                              for item in data["files"]),
                          set([("lib1", abspath(file_name1)),
                               ("lib2", abspath(file_name2))]))
+
+        # Check the contents of the tests section
+        self.assertEqual(set((item["name"],)
+                             for item in data["tests"]),
+                         set([("lib1.tb_foo.all",),
+                              ("lib2.tb_bar.Test one",),
+                              ("lib2.tb_bar.Test two",)]))
 
     def test_library_attributes(self):
         ui = self._create_ui()
