@@ -38,6 +38,7 @@ class TestBench(ConfigurationVisitor):
         self._individual_tests = False
         self._configs = {}
         self._test_cases = []
+        self._implicit_test = None
 
         if design_unit.is_entity:
             design_unit.set_add_architecture_callback(self._add_architecture_callback)
@@ -174,13 +175,19 @@ class TestBench(ConfigurationVisitor):
             """
             pragmas = _find_pragmas(content, file_name)
             test_case_names = _find_test_cases(content, file_name)
-            return pragmas, test_case_names
 
-        pragmas, test_case_names = cached("test_bench.parse",
-                                          parse,
-                                          file_name,
-                                          encoding=HDL_FILE_ENCODING,
-                                          database=self._database)
+            tests = [Test(name) for name in test_case_names]
+            if not tests:
+                # Implicit test
+                tests = [Test(None)]
+
+            return pragmas, tests
+
+        pragmas, tests = cached("test_bench.parse",
+                                parse,
+                                file_name,
+                                encoding=HDL_FILE_ENCODING,
+                                database=self._database)
 
         default_config = Configuration(DEFAULT_NAME, self.design_unit)
 
@@ -189,24 +196,63 @@ class TestBench(ConfigurationVisitor):
 
         self._configs = OrderedDict({default_config.name: default_config})
 
-        self._individual_tests = "run_all_in_same_sim" not in pragmas and len(test_case_names) > 0
-        self._test_cases = [TestConfigurationVisitor(name,
+        explicit_tests = [test for test in tests if test.is_explicit]
+        if explicit_tests:
+            # All tests shall be explicit when there are at least one explicit test
+            assert len(tests) == len(explicit_tests)
+            self._implicit_test = None
+        else:
+            # There can only be one implicit test
+            assert len(tests) == 1
+            self._implicit_test = tests[0]
+
+        self._individual_tests = "run_all_in_same_sim" not in pragmas and len(explicit_tests) > 0
+        self._test_cases = [TestConfigurationVisitor(test,
                                                      self.design_unit,
                                                      self._individual_tests,
                                                      default_config.copy())
-                            for name in test_case_names]
+                            for test in explicit_tests]
+
+
+class Test(object):
+    """
+    Holds information about a test in the source code
+
+    - name of test
+    - file name and line number where test came from
+    - if it was an explicit or implicit test [1]
+
+    [1]: Explicit tests are those where the user has written run("test name").
+         Implicit tests are those when there are no tests in the test bench, just the test suite
+    """
+
+    def __init__(self, name):
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def is_explicit(self):
+        return self._name is not None
 
 
 class TestConfigurationVisitor(ConfigurationVisitor):
     """
     A means to creates configurations for single test
     """
-    def __init__(self, name, design_unit, enable_configuration, default_config):
+    def __init__(self, test, design_unit, enable_configuration, default_config):
         ConfigurationVisitor.__init__(self)
-        self.name = name
+        self._test = test
+        assert test.is_explicit
         self.design_unit = design_unit
         self._enable_configuration = enable_configuration
         self._configs = OrderedDict({default_config.name: default_config})
+
+    @property
+    def name(self):
+        return self._test.name
 
     def get_default_config(self):
         """
@@ -242,7 +288,7 @@ class TestConfigurationVisitor(ConfigurationVisitor):
         for config in self._get_configurations_to_run():
             test_list.add_test(
                 IndependentSimTestCase(
-                    test_case=self.name,
+                    test_case=self._test.name,
                     config=config,
                     simulator_if=simulator_if,
                     elaborate_only=elaborate_only))
