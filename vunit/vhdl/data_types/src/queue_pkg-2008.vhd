@@ -11,6 +11,7 @@ use ieee.float_pkg.all;
 use work.queue_pkg.all;
 use work.codec_2008_pkg.all;
 use work.codec_builder_2008_pkg.all;
+use work.types_pkg.all;
 
 package queue_2008_pkg is
   procedure push (

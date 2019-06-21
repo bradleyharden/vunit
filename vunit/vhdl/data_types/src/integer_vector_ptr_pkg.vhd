@@ -91,6 +91,4 @@ package integer_vector_ptr_pkg is
   alias encode_integer_vector_ptr_t is encode[ptr_t return string];
   alias decode_integer_vector_ptr_t is decode[string return ptr_t];
 
-  constant integer_vector_ptr_t_code_length : positive := integer_code_length;
-
 end package;

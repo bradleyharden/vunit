@@ -7,6 +7,7 @@
 library ieee;
 use ieee.math_real.all;
 use ieee.math_complex.all;
+use work.types_pkg.all;
 use work.codec_pkg.all;
 use work.codec_builder_pkg.all;
 
@@ -14,7 +15,6 @@ package body queue_pkg is
   constant tail_idx : natural := 0;
   constant head_idx : natural := 1;
   constant num_meta : natural := head_idx + 1;
-  constant queue_t_code_length : positive := integer_vector_ptr_t_code_length + string_ptr_t_code_length;
 
   impure function new_queue
   return queue_t is begin
@@ -120,26 +120,26 @@ package body queue_pkg is
 
   procedure push_type (
     queue        : queue_t;
-    element_type : queue_element_type_t
+    element_type : type_t
   ) is begin
-    unsafe_push(queue, character'val(queue_element_type_t'pos(element_type)));
+    unsafe_push(queue, character'val(type_t'pos(element_type)));
   end;
 
   impure function pop_type (
     queue : queue_t
-  ) return queue_element_type_t is begin
-    return queue_element_type_t'val(character'pos(unsafe_pop(queue)));
+  ) return type_t is begin
+    return type_t'val(character'pos(unsafe_pop(queue)));
   end;
 
   procedure check_type (
     queue        : queue_t;
-    element_type : queue_element_type_t
+    element_type : type_t
   ) is
-    constant popped_type : queue_element_type_t := pop_type(queue);
+    constant popped_type : type_t := pop_type(queue);
   begin
     if popped_type /= element_type then
-      report "Got queue element of type " & queue_element_type_t'image(popped_type) &
-        ", expected " & queue_element_type_t'image(element_type) & "." severity error;
+      report "Got queue element of type " & type_t'image(popped_type) &
+        ", expected " & type_t'image(element_type) & "." severity error;
     end if;
   end;
 
@@ -190,7 +190,7 @@ package body queue_pkg is
   impure function unsafe_pop (
     queue : queue_t
   ) return integer is begin
-    return decode(pop_fix_string(queue, integer_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_integer)));
   end;
 
   procedure push (
@@ -205,7 +205,7 @@ package body queue_pkg is
     queue : queue_t
   ) return integer is begin
     check_type(queue, vhdl_integer);
-    return decode(pop_fix_string(queue, integer_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_integer)));
   end;
 
   procedure push_byte (
@@ -251,7 +251,7 @@ package body queue_pkg is
     queue : queue_t
   ) return boolean is begin
     check_type(queue, vhdl_boolean);
-    return decode(pop_fix_string(queue, boolean_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_boolean)));
   end;
 
   procedure unsafe_push (
@@ -264,7 +264,7 @@ package body queue_pkg is
   impure function unsafe_pop (
     queue : queue_t
   ) return boolean is begin
-    return decode(pop_fix_string(queue, boolean_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_boolean)));
   end;
 
   procedure push (
@@ -279,7 +279,7 @@ package body queue_pkg is
     queue : queue_t
   ) return real is begin
     check_type(queue, vhdl_real);
-    return decode(pop_fix_string(queue, real_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_real)));
   end;
 
   procedure push (
@@ -294,7 +294,7 @@ package body queue_pkg is
     queue : queue_t
   ) return bit is begin
     check_type(queue, vhdl_bit);
-    return decode(pop_fix_string(queue, bit_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_bit)));
   end;
 
   procedure push (
@@ -309,7 +309,7 @@ package body queue_pkg is
     queue : queue_t
   ) return std_ulogic is begin
     check_type(queue, ieee_std_ulogic);
-    return decode(pop_fix_string(queue, std_ulogic_code_length));
+    return decode(pop_fix_string(queue, code_length(ieee_std_ulogic)));
   end;
 
   procedure push (
@@ -324,7 +324,7 @@ package body queue_pkg is
     queue : queue_t
   ) return severity_level is begin
     check_type(queue, vhdl_severity_level);
-    return decode(pop_fix_string(queue, severity_level_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_severity_level)));
   end;
 
   procedure push (
@@ -339,7 +339,7 @@ package body queue_pkg is
     queue : queue_t
   ) return file_open_status is begin
     check_type(queue, vhdl_file_open_status);
-    return decode(pop_fix_string(queue, file_open_status_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_file_open_status)));
   end;
 
   procedure push (
@@ -354,7 +354,7 @@ package body queue_pkg is
     queue : queue_t
   ) return file_open_kind is begin
     check_type(queue, vhdl_file_open_kind);
-    return decode(pop_fix_string(queue, file_open_kind_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_file_open_kind)));
   end;
 
   procedure push (
@@ -376,14 +376,14 @@ package body queue_pkg is
     queue : queue_t;
     value : std_ulogic_vector
   ) is begin
-    push_type(queue, vhdl_std_ulogic_vector);
+    push_type(queue, ieee_std_ulogic_vector);
     push_variable_string(queue, encode(value));
   end;
 
   impure function pop (
     queue : queue_t
   ) return std_ulogic_vector is begin
-    check_type(queue, vhdl_std_ulogic_vector);
+    check_type(queue, ieee_std_ulogic_vector);
     return decode(pop_variable_string(queue));
   end;
 
@@ -399,7 +399,7 @@ package body queue_pkg is
     queue : queue_t
   ) return complex is begin
     check_type(queue, ieee_complex);
-    return decode(pop_fix_string(queue, complex_code_length));
+    return decode(pop_fix_string(queue, code_length(ieee_complex)));
   end;
 
   procedure push (
@@ -414,7 +414,7 @@ package body queue_pkg is
     queue : queue_t
   ) return complex_polar is begin
     check_type(queue, ieee_complex_polar);
-    return decode(pop_fix_string(queue, complex_polar_code_length));
+    return decode(pop_fix_string(queue, code_length(ieee_complex_polar)));
   end;
 
   procedure push (
@@ -504,14 +504,14 @@ package body queue_pkg is
     queue : queue_t
   ) return time is begin
     check_type(queue, vhdl_time);
-    return decode(pop_fix_string(queue, time_code_length));
+    return decode(pop_fix_string(queue, code_length(vhdl_time)));
   end;
 
   procedure push (
     queue : queue_t;
     variable value : inout integer_vector_ptr_t
   ) is begin
-    push_type(queue, vunit_integer_vector_ptr_t);
+    push_type(queue, vunit_integer_vector_ptr);
     push_fix_string(queue, encode(value));
     value := null_ptr;
   end;
@@ -519,8 +519,8 @@ package body queue_pkg is
   impure function pop (
     queue : queue_t
   ) return integer_vector_ptr_t is begin
-    check_type(queue, vunit_integer_vector_ptr_t);
-    return decode(pop_fix_string(queue, integer_vector_ptr_t_code_length));
+    check_type(queue, vunit_integer_vector_ptr);
+    return decode(pop_fix_string(queue, code_length(vunit_integer_vector_ptr)));
   end;
 
   procedure unsafe_push (
@@ -533,14 +533,14 @@ package body queue_pkg is
   impure function unsafe_pop (
     queue : queue_t
   ) return integer_vector_ptr_t is begin
-    return decode(pop_fix_string(queue, integer_vector_ptr_t_code_length));
+    return decode(pop_fix_string(queue, code_length(vunit_integer_vector_ptr)));
   end;
 
   procedure push (
     queue : queue_t;
     variable value : inout string_ptr_t
   ) is begin
-    push_type(queue, vunit_string_ptr_t);
+    push_type(queue, vunit_string_ptr);
     push_fix_string(queue, encode(value));
     value := null_string_ptr;
   end;
@@ -548,15 +548,15 @@ package body queue_pkg is
   impure function pop (
     queue : queue_t
   ) return string_ptr_t is begin
-    check_type(queue, vunit_string_ptr_t);
-    return decode(pop_fix_string(queue, string_ptr_t_code_length));
+    check_type(queue, vunit_string_ptr);
+    return decode(pop_fix_string(queue, code_length(vunit_string_ptr)));
   end;
 
   procedure push (
     queue : queue_t;
     variable value : inout queue_t
   ) is begin
-    push_type(queue, vunit_queue_t);
+    push_type(queue, vunit_queue);
     push_fix_string(queue, encode(value));
     value := null_queue;
   end;
@@ -564,15 +564,15 @@ package body queue_pkg is
   impure function pop (
     queue : queue_t
   ) return queue_t is begin
-    check_type(queue, vunit_queue_t);
-    return decode(pop_fix_string(queue, queue_t_code_length));
+    check_type(queue, vunit_queue);
+    return decode(pop_fix_string(queue, code_length(vunit_queue)));
   end;
 
   procedure push_ref (
     constant queue : queue_t;
     value : inout integer_array_t
   ) is begin
-    push_type(queue, vunit_integer_array_t);
+    push_type(queue, vunit_integer_array);
     unsafe_push(queue, value.length);
     unsafe_push(queue, value.width);
     unsafe_push(queue, value.height);
@@ -588,7 +588,7 @@ package body queue_pkg is
   impure function pop_ref (
     queue : queue_t
   ) return integer_array_t is begin
-    check_type(queue, vunit_integer_array_t);
+    check_type(queue, vunit_integer_array);
     return (
       length      => unsafe_pop(queue),
       width       => unsafe_pop(queue),
