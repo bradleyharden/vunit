@@ -16,113 +16,229 @@ use ieee.float_pkg.all;
 
 use std.textio.all;
 
+use work.types_pkg.all;
 use work.codec_builder_pkg.all;
 
 package codec_builder_2008_pkg is
+
+  procedure encode (
+    constant data  :       boolean_vector;
+    variable index : inout positive;
+    variable code  : inout string);
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   boolean_vector);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   boolean_vector);
+  procedure encode (
+    constant data  :       integer_vector;
+    variable index : inout positive;
+    variable code  : inout string);
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   integer_vector);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   integer_vector);
+  procedure encode (
+    constant data  :       real_vector;
+    variable index : inout positive;
+    variable code  : inout string);
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   real_vector);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   real_vector);
+  procedure encode (
+    constant data  :       time_vector;
+    variable index : inout positive;
+    variable code  : inout string);
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   time_vector);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   time_vector);
+  procedure encode (
+    constant data  :       ufixed;
+    variable index : inout positive;
+    variable code  : inout string);
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   ufixed);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   ufixed);
+  procedure encode (
+    constant data  :       sfixed;
+    variable index : inout positive;
+    variable code  : inout string);
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   sfixed);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   sfixed);
+  procedure encode (
+    constant data  :       float;
+    variable index : inout positive;
+    variable code  : inout string);
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   float);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   float);
+
 end package codec_builder_2008_pkg;
 
 package body codec_builder_2008_pkg is
-  procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   boolean_vector) is
-    variable result_bv : bit_vector(result'range);
+
+  procedure encode (
+    constant data  :       boolean_vector;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+    variable value : bit_vector(data'range);
   begin
-    decode(code, index, result_bv);
-    for i in result'range loop
-      result(i) := result_bv(i) = '1';
+    for i in data'range loop
+      value(i) := '1' when data(i) else '0';
+    end loop;
+    encode(value, index, code);
+  end;
+
+  procedure decode (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   boolean_vector)
+  is
+    variable value : bit_vector(data'range);
+  begin
+    decode(code, index, value);
+    for i in data'range loop
+      data(i) := value(i) = '1';
+    end loop;
+  end;
+
+  procedure encode (
+    constant data  :       integer_vector;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    for i in data'range loop
+      encode(data(i), index, code);
     end loop;
   end;
 
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   integer_vector) is
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   integer_vector)
+  is
   begin
-    index := index + 9;
-    for i in result'range loop
-      decode(code, index, result(i));
+    for i in data'range loop
+      decode(code, index, data(i));
+    end loop;
+  end;
+
+  procedure encode (
+    constant data  :       real_vector;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    for i in data'range loop
+      encode(data(i), index, code);
     end loop;
   end;
 
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   real_vector) is
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   real_vector)
+  is
   begin
-    index := index + 9;
-    for i in result'range loop
-      decode(code, index, result(i));
+    for i in data'range loop
+      decode(code, index, data(i));
+    end loop;
+  end;
+
+  procedure encode (
+    constant data  :       time_vector;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    for i in data'range loop
+      encode(data(i), index, code);
     end loop;
   end;
 
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   time_vector) is
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   time_vector)
+  is
   begin
-    index := index + 9;
-    for i in result'range loop
-      decode(code, index, result(i));
+    for i in data'range loop
+      decode(code, index, data(i));
     end loop;
   end;
 
-  procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   ufixed) is
-    variable result_sula : std_ulogic_array(result'range);
+  procedure encode (
+    constant data  :       ufixed;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+    variable value : std_ulogic_array(data'range);
   begin
-    decode(code, index, result_sula);
-    result := ufixed(result_sula);
+    value := std_ulogic_array(data);
+    encode(value, index, code);
   end;
 
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   sfixed) is
-    variable result_sula : std_ulogic_array(result'range);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   ufixed)
+  is
+    variable value : std_ulogic_array(data'range);
   begin
-    decode(code, index, result_sula);
-    result := sfixed(result_sula);
+    decode(code, index, value);
+    data := ufixed(value);
+  end;
+
+  procedure encode (
+    constant data  :       sfixed;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+    variable value : std_ulogic_array(data'range);
+  begin
+    value := std_ulogic_array(data);
+    encode(value, index, code);
   end;
 
   procedure decode (
-    constant code   :       string;
-    variable index  : inout positive;
-    variable result : out   float) is
-    variable result_sula : std_ulogic_array(result'range);
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   sfixed)
+  is
+    variable value : std_ulogic_array(data'range);
   begin
-    decode(code, index, result_sula);
-    result := float(result_sula);
+    decode(code, index, value);
+    data := sfixed(value);
+  end;
+
+  procedure encode (
+    constant data  :       float;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+    variable value : std_ulogic_array(data'range);
+  begin
+    value := std_ulogic_array(data);
+    encode(value, index, code);
+  end;
+
+  procedure decode (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   float)
+  is
+    variable value : std_ulogic_array(data'range);
+  begin
+    decode(code, index, value);
+    data := float(value);
   end;
 
 end package body codec_builder_2008_pkg;
+
