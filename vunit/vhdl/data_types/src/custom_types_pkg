@@ -1,0 +1,86 @@
+
+  type custom_enum_t is (enum_zero, enum_one, enum_two);
+
+  type custom_array_t is array (integer range <>) of custom_element_t;
+
+  type custom_record_t is record
+    zero : custom_enum_t;
+    one  : custom_array_t;
+  end record;
+
+  constant custom_enum_type   : type_t := new_type("custom_enum");
+  constant custom_array_type  : type_t := new_type("custom_array");
+  constant custom_record_type : type_t := new_type("custom_record");
+
+  function to_item (
+    data : custom_enum_t)
+    return item_t
+  is
+    variable list : list_t := new_list(1);
+  begin
+    set(list, 0, to_item(custom_enum_t'pos(data)));
+    return to_custom_item(custom_enum_type, list);
+  end;
+
+  function from_item (
+    item : item_t)
+    return custom_enum_t
+  is
+    variable list : list_t := from_custom_item(item);
+  begin
+    return custom_enum_t'val(from_item(get(list, 0)));
+  end;
+
+  function to_item (
+    data : custom_array_t)
+    return item_t
+  is
+    variable rng   : range_t(data'range);
+    variable list  : list_t := new_list();
+  begin
+    append(list, to_item(rng));
+    for i in data'range loop
+      append(list, to_item(data(i)));
+    end loop;
+    return to_custom_item(custom_array_type, list);
+  end;
+
+  function from_item (
+    item : item_t)
+    return custom_array_t
+  is
+    variable list  : list_t  := from_custom_item(item);
+    constant rng   : range_t := from_item(get(list, 0));
+    variable index : natural;
+    variable data  : custom_array_t(rng'range);
+  begin
+    index := 1;
+    for i in data'range loop
+      data(i) := from_item(get(list, index));
+      index := index + 1;
+    end loop;
+  end;
+
+  function to_item (
+    data : custom_record_t)
+    return item_t
+  is
+    variable list : list_t := new_list();
+  begin
+    append(list, to_item(data.zero));
+    append(list, to_item(data.one));
+    return to_custom_item(custom_array_type, list);
+  end;
+
+  function from_item (
+    item : item_t)
+    return custom_record_t
+  is
+    variable list : list_t := from_custom_item(item);
+    variable data : custom_record_t;
+  begin
+    data.zero := from_item(get(list, 0));
+    data.one  := from_item(get(list, 1));
+    return data;
+  end;
+

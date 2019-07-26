@@ -8,21 +8,15 @@
 
 -- vunit: run_all_in_same_sim
 
-library vunit_lib;
-context vunit_lib.vunit_context;
-use vunit_lib.queue_pkg.all;
-use vunit_lib.integer_vector_ptr_pkg.all;
-use vunit_lib.codec_2008_pkg.all;
+use work.check_pkg.all;
+use work.run_pkg.all;
+use work.codec_2008_pkg.all;
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.float_pkg.all;
-use ieee.math_complex.all;
-use ieee.numeric_bit.all;
-use ieee.numeric_std.all;
 use ieee.fixed_pkg.all;
 
-use std.textio.all;
 
 entity tb_codec_2008 is
   generic (

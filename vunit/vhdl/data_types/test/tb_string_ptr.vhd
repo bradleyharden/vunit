@@ -108,15 +108,6 @@ begin
         set(ptr, 4, '1');
         assert to_string(ptr) = "abc1";
 
-      elsif run("Test codecs") then
-        ptr := new_string_ptr(0);
-        check(decode(encode(ptr)) = ptr);
-
-        ptr2 := new_string_ptr(2);
-        set(ptr2, 1, another_random_value);
-        set(ptr2, 2, a_random_value);
-        check(decode(encode(ptr2)) = ptr2);
-
       elsif run("Test denormal string") then
         ptr := new_string_ptr(denormal_string);
         check_equal(to_string(ptr), "ab");

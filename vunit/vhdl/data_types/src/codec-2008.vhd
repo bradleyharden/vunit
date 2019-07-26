@@ -16,7 +16,8 @@ use ieee.float_pkg.all;
 
 use std.textio.all;
 
-use work.types_pkg.all;
+use work.type_pkg.all;
+use work.codec_builder_pkg.all;
 
 package codec_2008_pkg is
   -----------------------------------------------------------------------------

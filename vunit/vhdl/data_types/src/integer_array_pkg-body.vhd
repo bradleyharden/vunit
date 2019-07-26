@@ -6,6 +6,7 @@
 
 use std.textio.all;
 
+use work.type_pkg.all;
 use work.codec_pkg.all;
 use work.codec_builder_pkg.all;
 
@@ -342,9 +343,7 @@ package body integer_array_pkg is
   begin
     arr_copy := new_3d(arr.width, arr.height,
                        arr.depth, arr.bit_width, arr.is_signed);
-    for i in 0 to arr.length-1 loop
-      set(arr_copy, i, get(arr, i));
-    end loop;
+    arr_copy.data := copy(arr.data);
     return arr_copy;
   end;
 
@@ -497,4 +496,31 @@ package body integer_array_pkg is
     return ret_val;
   end;
 
+  impure function to_item (
+    constant value : integer_array_t
+  ) return item_t is begin
+    return encode(vunit_integer_array) & encode(value);
+  end;
+
+  impure function from_item (
+    constant item : item_t
+  ) return integer_array_t is begin
+    return decode(trim_type(item, vunit_integer_array));
+  end;
+
+  procedure push (
+    constant queue : queue_t;
+    value : inout integer_array_t
+  ) is begin
+    push_item(queue, to_item(value));
+    value := null_integer_array;
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return integer_array_t is begin
+    return from_item(pop_item(queue));
+  end;
+
 end package body;
+

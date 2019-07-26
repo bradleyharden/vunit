@@ -9,12 +9,11 @@
 -- vunit: run_all_in_same_sim
 
 library vunit_lib;
-use vunit_lib.string_ops.all;
 use vunit_lib.check_pkg.all;
 use vunit_lib.run_pkg.all;
-use vunit_lib.path.all;
-use vunit_lib.queue_pkg.all;
 use vunit_lib.integer_vector_ptr_pkg.all;
+use vunit_lib.string_ptr_pkg.all;
+use vunit_lib.string_ptr_vector_ptr_pkg.all;
 use vunit_lib.codec_pkg.all;
 
 library ieee;
@@ -24,7 +23,6 @@ use ieee.math_real.all;
 use ieee.numeric_bit.all;
 use ieee.numeric_std.all;
 
-use std.textio.all;
 
 entity tb_codec is
   generic (
@@ -100,6 +98,9 @@ begin
     variable numeric_bit_signed_5_downto_3 : ieee.numeric_bit.signed(5 downto 3);
     variable numeric_std_unsigned_5_downto_3 : ieee.numeric_std.unsigned(5 downto 3);
     variable numeric_std_signed_5_downto_3 : ieee.numeric_std.signed(5 downto 3);
+    variable integer_vector_ptr, integer_vector_ptr2 : integer_vector_ptr_t;
+    variable string_ptr, string_ptr2 : string_ptr_t;
+    variable string_ptr_vector_ptr, string_ptr_vector_ptr2 : string_ptr_vector_ptr_t;
 
     -- Temp variables to make test case pass Riviera-PRO 2016.10
     variable range_left, range_right : integer;
@@ -247,6 +248,27 @@ begin
         range_right := decode_numeric_std_signed(encode_numeric_std_signed(numeric_std_signed_5_downto_3))'right;
         check_relation(range_left = 5);
         check_relation(range_right = 3);
+      elsif run("Test that integer_vector_ptr can be encoded and decoded") then
+        integer_vector_ptr := new_integer_vector_ptr(0);
+        check(decode(encode(integer_vector_ptr)) = integer_vector_ptr);
+        integer_vector_ptr2 := new_integer_vector_ptr(2);
+        set(integer_vector_ptr2, 0, 999);
+        set(integer_vector_ptr2, 1, 77);
+        check(decode(encode(integer_vector_ptr2)) = integer_vector_ptr2);
+      elsif run("Test that string_ptr can be encoded and decoded") then
+        string_ptr := new_string_ptr(0);
+        check(decode(encode(string_ptr)) = string_ptr);
+        string_ptr2 := new_string_ptr(2);
+        set(string_ptr2, 1, '9');
+        set(string_ptr2, 2, '7');
+        check(decode(encode(string_ptr2)) = string_ptr2);
+      elsif run("Test that string_ptr_vector_ptr can be encoded and decoded") then
+        string_ptr_vector_ptr := new_string_ptr_vector_ptr(0);
+        check(decode(encode(string_ptr_vector_ptr)) = string_ptr_vector_ptr);
+        string_ptr_vector_ptr2 := new_string_ptr_vector_ptr(2);
+        set(string_ptr_vector_ptr2, 0, "another random value");
+        set(string_ptr_vector_ptr2, 1, "a random value");
+        check(decode(encode(string_ptr_vector_ptr2)) = string_ptr_vector_ptr2);
       end if;
     end loop;
 

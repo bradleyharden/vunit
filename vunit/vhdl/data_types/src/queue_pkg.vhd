@@ -11,52 +11,20 @@ use ieee.numeric_bit.all;
 use ieee.numeric_std.all;
 use work.integer_vector_ptr_pkg.all;
 use work.string_ptr_pkg.all;
-use work.integer_array_pkg.all;
+use work.string_ptr_vector_ptr_pkg.all;
+use work.codec_pkg.all;
+use work.item_pkg.all;
 
 package queue_pkg is
 
-  type queue_item_type_t is (
-    vhdl_boolean,
-    vhdl_boolean_vector,
-    vhdl_bit,
-    vhdl_bit_vector,
-    vhdl_character,
-    vhdl_string,
-    vhdl_integer,
-    vhdl_integer_vector,
-    vhdl_real,
-    vhdl_real_vector,
-    vhdl_time,
-    vhdl_time_vector,
-    vhdl_severity_level,
-    vhdl_file_open_status,
-    vhdl_file_open_kind,
-    ieee_complex,
-    ieee_complex_polar,
-    ieee_std_ulogic,
-    ieee_std_ulogic_vector,
-    ieee_numeric_bit_unsigned,
-    ieee_numeric_bit_signed,
-    ieee_numeric_std_unsigned,
-    ieee_numeric_std_signed,
-    ieee_ufixed,
-    ieee_sfixed,
-    ieee_float,
-    vunit_byte,
-    vunit_integer_vector_ptr,
-    vunit_string_ptr,
-    vunit_integer_array,
-    vunit_queue
-  );
-
   type queue_t is record
     p_meta : integer_vector_ptr_t;
-    data   : integer_vector_ptr_t;
+    data   : string_ptr_vector_ptr_t;
   end record;
 
   type queue_vec_t is array(integer range <>) of queue_t;
 
-  constant null_queue : queue_t := (p_meta => null_ptr, data => null_ptr);
+  constant null_queue : queue_t := (p_meta => null_ptr, data => null_string_ptr_vector_ptr);
 
   impure function new_queue
     return queue_t;
@@ -81,27 +49,14 @@ package queue_pkg is
     queue : inout queue_t
   );
 
-  function encode (
-    item_type : queue_item_type_t
-  ) return character;
-
-  function decode (
-    char : character
-  ) return queue_item_type_t;
-
   procedure push_item (
     queue : queue_t;
-    value : string
+    value : item_t
   );
 
   impure function pop_item (
     queue : queue_t
-  ) return string;
-
-  procedure check_type (
-    got      : queue_item_type_t;
-    expected : queue_item_type_t
-  );
+  ) return item_t;
 
   procedure push (
     queue : queue_t;
@@ -342,7 +297,7 @@ package queue_pkg is
 
   procedure push (
     queue : queue_t;
-    variable value : inout integer_vector_ptr_t
+    value : inout integer_vector_ptr_t
   );
 
   impure function pop (
@@ -354,7 +309,7 @@ package queue_pkg is
 
   procedure push (
     queue : queue_t;
-    variable value : inout string_ptr_t
+    value : inout string_ptr_t
   );
 
   impure function pop (
@@ -366,7 +321,7 @@ package queue_pkg is
 
   procedure push (
     queue : queue_t;
-    variable value : inout queue_t
+    value : inout queue_t
   );
 
   impure function pop (
@@ -377,33 +332,56 @@ package queue_pkg is
   alias pop_queue_ref is pop[queue_t return queue_t];
 
   procedure push (
-    constant queue : queue_t;
-    value : inout integer_array_t
+    queue : queue_t;
+    value : range_t
   );
 
   impure function pop (
     queue : queue_t
-  ) return integer_array_t;
+  ) return range_t;
 
-  alias push_integer_array_t_ref is push[queue_t, integer_array_t];
-  alias pop_integer_array_t_ref is pop[queue_t return integer_array_t];
+  alias push_range_t is push[queue_t, range_t];
+  alias pop_range_t is pop[queue_t return range_t];
+
+  -----------------------------------------------------------------------------
+  -- Codec procedures & functions
+  -----------------------------------------------------------------------------
+  procedure encode (
+    constant data  :       queue_t;
+    variable index : inout positive;
+    variable code  : inout string
+  );
+
+  procedure decode (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   queue_t
+  );
 
   function encode (
-    data : queue_t
+    constant data : queue_t
   ) return string;
 
   function decode (
-    code : string
+    constant code : string
   ) return queue_t;
-
-  procedure decode (
-    constant code   : string;
-    variable index  : inout positive;
-    variable result : out queue_t
-  );
 
   alias encode_queue_t is encode[queue_t return string];
   alias decode_queue_t is decode[string return queue_t];
+
+  -----------------------------------------------------------------------------
+  -- Item type conversion
+  -----------------------------------------------------------------------------
+  impure function to_item (
+    constant value : queue_t
+  ) return item_t;
+
+  impure function from_item (
+    constant item : item_t
+  ) return queue_t;
+
+  alias queue_t_to_item is to_item[queue_t return item_t];
+  alias to_queue_t is from_item[item_t return queue_t];
 
 end package;
 

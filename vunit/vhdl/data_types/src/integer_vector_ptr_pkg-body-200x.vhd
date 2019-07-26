@@ -225,9 +225,10 @@ package body integer_vector_ptr_pkg is
   end;
 
   procedure deallocate (
-    ptr : ptr_t
+    ptr : inout ptr_t
   ) is begin
     ptr_storage.deallocate(ptr.ref);
+    ptr := null_integer_vector_ptr;
   end;
 
   impure function length (
@@ -269,28 +270,22 @@ package body integer_vector_ptr_pkg is
     ptr_storage.resize(ptr.ref, length, drop, value, rotate);
   end;
 
-  function encode (
-    data : ptr_t
-  ) return string is begin
-    return encode(data.ref);
-  end;
-
-  function decode (
-    code : string
+  impure function copy (
+    ptr : ptr_t
   ) return ptr_t is
-    variable ret_val : ptr_t;
-    variable index   : positive := code'left;
+    variable len : natural;
+    variable cpy : ptr_t;
   begin
-    decode(code, index, ret_val);
-    return ret_val;
-  end;
-
-  procedure decode (
-    constant code   : string;
-    variable index  : inout positive;
-    variable result : out ptr_t
-  ) is begin
-    decode(code, index, result.ref);
+    if ptr = null_integer_vector_ptr then
+      return ptr;
+    else
+      len := length(ptr);
+      cpy := new_integer_vector_ptr(len);
+      for i in 0 to len - 1 loop
+        set(cpy, i, get(ptr, i));
+      end loop;
+      return cpy;
+    end if;
   end;
 
 end package body;

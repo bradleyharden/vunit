@@ -12,9 +12,6 @@
 
 use work.string_pkg.all;
 
-use work.codec_pkg.all;
-use work.codec_builder_pkg.all;
-
 package string_ptr_pkg is
 
   subtype index_t is integer range -1 to integer'high;
@@ -49,7 +46,7 @@ package string_ptr_pkg is
   ) return ptr_t;
 
   procedure deallocate (
-    ptr : ptr_t
+    ptr : inout ptr_t
   );
 
   impure function length (
@@ -88,22 +85,9 @@ package string_ptr_pkg is
     ptr : ptr_t
   ) return string;
 
-  function encode (
-    data : ptr_t
-  ) return string;
-
-  function decode (
-    code : string
+  impure function copy (
+    ptr : ptr_t
   ) return ptr_t;
-
-  procedure decode (
-    constant code   : string;
-    variable index  : inout positive;
-    variable result : out ptr_t
-  );
-
-  alias encode_string_ptr_t is encode[ptr_t return string];
-  alias decode_string_ptr_t is decode[string return ptr_t];
 
 end package;
 

@@ -15,13 +15,21 @@ use ieee.numeric_std.all;
 
 use std.textio.all;
 
-use work.types_pkg.all;
+use work.integer_vector_ptr_pkg.all;
+use work.string_ptr_pkg.all;
+use work.string_ptr_vector_ptr_pkg.all;
+use work.type_pkg.all;
 
 package codec_builder_pkg is
 
   type std_ulogic_array is array (integer range <>) of std_ulogic;
 
   function get_simulator_resolution return time;
+
+  function code_length (
+    constant typ    : type_t;
+    constant length : natural := 1)
+    return natural;
 
   procedure encode (
     constant data  :       integer;
@@ -103,14 +111,6 @@ package codec_builder_pkg is
     constant code  :       string;
     variable index : inout positive;
     variable data  : out   character);
-  procedure encode (
-    constant data  :       type_t;
-    variable index : inout positive;
-    variable code  : inout string);
-  procedure decode (
-    constant code  :       string;
-    variable index : inout positive;
-    variable data  : out   type_t);
 
   procedure encode (
     constant data  :       std_ulogic_array;
@@ -193,6 +193,47 @@ package codec_builder_pkg is
     variable index : inout positive;
     variable data  : out   ieee.numeric_std.signed);
 
+  procedure encode (
+    constant data  :       type_t;
+    variable index : inout positive;
+    variable code  : inout string);
+  procedure decode (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   type_t);
+  procedure encode_byte (
+    constant data  :       natural range 0 to 255;
+    variable index : inout positive;
+    variable code  : inout string);
+  procedure decode_byte (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   natural range 0 to 255);
+  procedure encode (
+    constant data  :       integer_vector_ptr_t;
+    variable index : inout positive;
+    variable code  : inout string);
+  procedure decode (
+    constant code   :       string;
+    variable index  : inout positive;
+    variable result : out   integer_vector_ptr_t);
+  procedure encode (
+    constant data  :       string_ptr_t;
+    variable index : inout positive;
+    variable code  : inout string);
+  procedure decode (
+    constant code   :       string;
+    variable index  : inout positive;
+    variable result : out   string_ptr_t);
+  procedure encode (
+    constant data  :       string_ptr_vector_ptr_t;
+    variable index : inout positive;
+    variable code  : inout string);
+  procedure decode (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   string_ptr_vector_ptr_t);
+
 end package codec_builder_pkg;
 
 package body codec_builder_pkg is
@@ -212,6 +253,61 @@ package body codec_builder_pkg is
   end;
 
   constant simulator_resolution : time := get_simulator_resolution;
+
+  function size (
+    constant typ : type_t)
+    return natural is
+  begin
+    if    typ = null_type                   then return 0;
+    elsif typ = vhdl_null                   then return 0;
+    elsif typ = vhdl_boolean                then return 1;
+    elsif typ = vhdl_boolean_vector         then return size(vhdl_boolean);
+    elsif typ = vhdl_bit                    then return 1;
+    elsif typ = vhdl_bit_vector             then return size(vhdl_bit);
+    elsif typ = vhdl_character              then return 8;
+    elsif typ = vhdl_string                 then return size(vhdl_character);
+    elsif typ = vhdl_integer                then return 32;
+    elsif typ = vhdl_integer_vector         then return size(vhdl_integer);
+    elsif typ = vhdl_real                   then return 64;
+    elsif typ = vhdl_real_vector            then return size(vhdl_real);
+    elsif typ = vhdl_time                   then return 64;
+    elsif typ = vhdl_time_vector            then return size(vhdl_time);
+    elsif typ = vhdl_severity_level         then return 8;
+    elsif typ = vhdl_file_open_status       then return 8;
+    elsif typ = vhdl_file_open_kind         then return 8;
+    elsif typ = ieee_numeric_bit_unsigned   then return size(vhdl_bit);
+    elsif typ = ieee_numeric_bit_signed     then return size(vhdl_bit);
+    elsif typ = ieee_complex                then return 2 * size(vhdl_real);
+    elsif typ = ieee_complex_polar          then return 2 * size(vhdl_real);
+    elsif typ = ieee_std_ulogic             then return 4;
+    elsif typ = ieee_std_ulogic_vector      then return size(ieee_std_ulogic);
+    elsif typ = ieee_numeric_std_unsigned   then return size(ieee_std_ulogic);
+    elsif typ = ieee_numeric_std_signed     then return size(ieee_std_ulogic);
+    elsif typ = ieee_ufixed                 then return size(ieee_std_ulogic);
+    elsif typ = ieee_sfixed                 then return size(ieee_std_ulogic);
+    elsif typ = ieee_float                  then return size(ieee_std_ulogic);
+    elsif typ = vunit_type                  then return 8;
+    elsif typ = vunit_range                 then return 2 * size(vhdl_integer) + size(vhdl_boolean);
+    elsif typ = vunit_byte                  then return 8;
+    elsif typ = vunit_integer_vector_ptr    then return size(vhdl_integer);
+    elsif typ = vunit_string_ptr            then return size(vhdl_integer);
+    elsif typ = vunit_string_ptr_vector_ptr then return size(vunit_integer_vector_ptr);
+    else
+      report "invalid type" severity failure;
+    end if;
+  end function;
+
+  function code_length (
+    constant typ    : type_t;
+    constant length : natural := 1)
+    return natural
+  is
+    constant siz   : natural := size(typ);
+    constant bytes : natural := siz / 8;
+    constant bits  : natural := siz mod 8;
+  begin
+    return bytes * length + (bits * length + 7) / 8;
+  end;
 
   procedure encode (
     constant data  :       integer;
@@ -242,45 +338,50 @@ package body codec_builder_pkg is
   is
 
     function log2 (a : real) return integer is
-      variable y : real;
+      variable y : real := a;
       variable n : integer := 0;
     begin
-      if (a = 1.0 or a = 0.0) then
-        return 0;
-      end if;
-      y := a;
-      if(a > 1.0) then
-        while y >= 2.0 loop
-          y := y / 2.0;
-          n := n + 1;
-        end loop;
-        return n;
-      end if;
-      -- 0 < y < 1
-      while y < 1.0 loop
+      while y >= 2.0 and n < 1024 loop
+        y := y / 2.0;
+        n := n + 1;
+      end loop;
+      while y < 1.0 and n > -1023 loop
         y := y * 2.0;
         n := n - 1;
       end loop;
       return n;
     end function;
 
+    variable value : real    := data;
     constant sign  : boolean := data < 0.0;
     variable exp   : integer;
-    variable low   : integer;
-    variable high  : integer;
-    variable value : real := data;
+    variable high  : natural;
+    variable low   : natural;
+    variable bits  : ieee.numeric_bit.unsigned(63 downto 0);
+    -- Encode as IEEE 754 binary64
+    -- Drop mantissa MSB by overwriting with exponent
+    alias bits_sign : bit is bits(63);
+    alias bits_exp  : ieee.numeric_bit.unsigned(10 downto 0) is bits(62 downto 52);
+    alias bits_high : ieee.numeric_bit.unsigned(21 downto 0) is bits(52 downto 31);
+    alias bits_low  : ieee.numeric_bit.unsigned(30 downto 0) is bits(30 downto 0);
   begin
     if sign then
       value := -value;
     end if;
     exp := log2(value);
-    value := value * 2.0 ** (-exp + 53); -- Assume 53 mantissa bits
+    if exp > -1023 then
+      value := value * 2.0 ** (-exp);
+    else
+      value := value * 2.0 ** 1022;
+    end if;
+    value := value * 2.0 ** 52;
     high := integer(floor(value * 2.0 ** (-31)));
     low := integer(value - real(high) * 2.0 ** 31);
-    encode(sign, index, code);
-    encode(exp, index, code);
-    encode(low, index, code);
-    encode(high, index, code);
+    bits_low  := to_unsigned(low, 31);
+    bits_high := to_unsigned(high, 22);
+    bits_exp  := to_unsigned(exp + 1023, 11);
+    bits_sign := bit'val(boolean'pos(sign));
+    encode(bits, index, code);
   end;
 
   procedure decode (
@@ -288,17 +389,30 @@ package body codec_builder_pkg is
     variable index : inout positive;
     variable data  : out   real)
   is
+    variable bits  : ieee.numeric_bit.unsigned(63 downto 0);
     variable sign  : boolean;
     variable exp   : integer;
-    variable low   : integer;
-    variable high  : integer;
+    variable high  : natural;
+    variable low   : natural;
     variable value : real;
+    -- Decode as IEEE 754 binary64
+    alias bits_sign : bit is bits(63);
+    alias bits_exp  : ieee.numeric_bit.unsigned(10 downto 0) is bits(62 downto 52);
+    alias bits_high : ieee.numeric_bit.unsigned(20 downto 0) is bits(51 downto 31);
+    alias bits_low  : ieee.numeric_bit.unsigned(30 downto 0) is bits(30 downto 0);
   begin
-    decode(code, index, sign);
-    decode(code, index, exp);
-    decode(code, index, low);
-    decode(code, index, high);
-    value := (real(low) + real(high) * 2.0**31) * 2.0 ** (exp - 53);
+    decode(code, index, bits);
+    sign := bits_sign = '1';
+    exp  := to_integer(bits_exp) - 1023;
+    high := to_integer(bits_high);
+    low  := to_integer(bits_low);
+    value := (real(low) + real(high) * 2.0 ** 31) * 2.0 ** (-52);
+    if exp > -1023 then
+      value := value + 1.0;
+      value := value * 2.0 ** exp;
+    else
+      value := value * 2.0 ** (-1022);
+    end if;
     if sign then
       value := -value;
     end if;
@@ -323,7 +437,7 @@ package body codec_builder_pkg is
     variable t    : time := data;
     variable byte : natural range 0 to 255;
   begin
-    -- @TODO assumes time is code_length(vhdl_time) bytes
+    -- @TODO assumes size of time
     for i in code_length(vhdl_time) - 1 downto 0 loop
       byte := modulo(t, 256);
       code(index + i) := character'val(byte);
@@ -340,7 +454,7 @@ package body codec_builder_pkg is
     variable byte : integer;
     variable temp : time;
   begin
-    -- @TODO assumes time is code_length(vhdl_time) bytes
+    -- @TODO assumes size of time
     temp := simulator_resolution * 0;
     for i in 1 to code_length(vhdl_time) loop
       temp := temp * 256;
@@ -360,11 +474,7 @@ package body codec_builder_pkg is
     variable code  : inout string)
   is
   begin
-    if data then
-      code(index) := 'T';
-    else
-      code(index) := 'F';
-    end if;
+    code(index) := character'val(boolean'pos(data));
     index := index + 1;
   end;
 
@@ -374,7 +484,7 @@ package body codec_builder_pkg is
     variable data  : out   boolean)
   is
   begin
-    data := code(index) = 'T';
+    data := boolean'val(character'pos(code(index)));
     index := index + 1;
   end;
 
@@ -384,11 +494,7 @@ package body codec_builder_pkg is
     variable code  : inout string)
   is
   begin
-    if data = '1' then
-      code(index) := '1';
-    else
-      code(index) := '0';
-    end if;
+    code(index) := character'val(bit'pos(data));
     index := index + 1;
   end;
 
@@ -398,11 +504,7 @@ package body codec_builder_pkg is
     variable data  : out   bit)
   is
   begin
-    if code(index) = '1' then
-      data := '1';
-    else
-      data := '0';
-    end if;
+    data := bit'val(character'pos(code(index)));
     index := index + 1;
   end;
 
@@ -412,7 +514,7 @@ package body codec_builder_pkg is
     variable code  : inout string)
   is
   begin
-    code(index) := std_ulogic'image(data)(2);
+    code(index) := character'val(std_ulogic'pos(data));
     index := index + 1;
   end;
 
@@ -422,7 +524,7 @@ package body codec_builder_pkg is
     variable data  : out   std_ulogic)
   is
   begin
-    data := std_ulogic'value("'" & code(index) & "'");
+    data := std_ulogic'val(character'pos(code(index)));
     index  := index + 1;
   end procedure decode;
 
@@ -506,25 +608,6 @@ package body codec_builder_pkg is
     index := index + 1;
   end;
 
-  procedure encode (
-    constant data  :       type_t;
-    variable index : inout positive;
-    variable code  : inout string)
-  is
-  begin
-    code(index) := character'val(type_t'pos(data));
-    index := index + 1;
-  end;
-
-  procedure decode (
-    constant code  :       string;
-    variable index : inout positive;
-    variable data  : out   type_t)
-  is
-  begin
-    data := type_t'val(character'pos(code(index)));
-    index := index + 1;
-  end;
 
   procedure encode (
     constant data  :       std_ulogic_array;
@@ -643,9 +726,7 @@ package body codec_builder_pkg is
   is
     variable value : std_ulogic_array(data'range);
   begin
-    if data'length = 0 then
-      data := "";
-    else
+    if data'length > 0 then
       decode(code, index, value);
       data := std_ulogic_vector(value);
     end if;
@@ -753,9 +834,7 @@ package body codec_builder_pkg is
   is
     variable value : std_ulogic_array(data'range);
   begin
-    if data'length = 0 then
-      data := "";
-    else
+    if data'length > 0 then
       decode(code, index, value);
       data := ieee.numeric_std.unsigned(value);
     end if;
@@ -779,12 +858,104 @@ package body codec_builder_pkg is
   is
     variable value : std_ulogic_array(data'range);
   begin
-    if data'length = 0 then
-      data := "";
-    else
+    if data'length > 0 then
       decode(code, index, value);
       data := ieee.numeric_std.signed(value);
     end if;
+  end;
+
+  procedure encode (
+    constant data  :       type_t;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    code(index) := character'val(data.p_index + 1);
+    index := index + 1;
+  end;
+
+  procedure decode (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   type_t)
+  is
+  begin
+    data.p_index := character'pos(code(index)) - 1;
+    index := index + 1;
+  end;
+
+  procedure encode_byte (
+    constant data  :       natural range 0 to 255;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    code(index) := character'val(data);
+    index := index + 1;
+  end;
+
+  procedure decode_byte (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   natural range 0 to 255)
+  is
+  begin
+    data := character'pos(code(index));
+    index := index + 1;
+  end;
+
+  procedure encode (
+    constant data  :       integer_vector_ptr_t;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    encode(data.ref, index, code);
+  end;
+
+  procedure decode (
+    constant code   :       string;
+    variable index  : inout positive;
+    variable result : out   integer_vector_ptr_t)
+  is
+  begin
+    decode(code, index, result.ref);
+  end;
+
+  procedure encode (
+    constant data  :       string_ptr_t;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    encode(data.ref, index, code);
+  end;
+
+  procedure decode (
+    constant code   :       string;
+    variable index  : inout positive;
+    variable result : out   string_ptr_t)
+  is
+  begin
+    decode(code, index, result.ref);
+  end;
+
+  procedure encode (
+    constant data  :       string_ptr_vector_ptr_t;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    encode(data.p_ivp, index, code);
+  end;
+
+  procedure decode (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   string_ptr_vector_ptr_t)
+  is
+  begin
+    decode(code, index, data.p_ivp);
   end;
 
 end package body codec_builder_pkg;

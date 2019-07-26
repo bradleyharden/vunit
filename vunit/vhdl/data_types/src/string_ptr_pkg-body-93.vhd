@@ -77,9 +77,9 @@ package body string_ptr_pkg is
   end;
 
   procedure deallocate (
-    ptr : ptr_t
+    ptr : inout ptr_t
   ) is begin
-    if ptr.ref > 0 then
+    if ptr.ref >= 0 then
       check_valid(ptr.ref);
       if stack_index >= stack'length then
         reallocate_stack(stack'length + 2**16);
@@ -88,6 +88,7 @@ package body string_ptr_pkg is
       stack_index := stack_index + 1;
       deallocate(storage(ptr.ref));
       storage(ptr.ref) := null;
+      ptr := null_string_ptr;
     end if;
   end;
 
@@ -181,28 +182,14 @@ package body string_ptr_pkg is
     return (ref => value);
   end;
 
-  function encode (
-    data : ptr_t
-  ) return string is begin
-    return encode(data.ref);
-  end;
-
-  function decode (
-    code : string
-  ) return ptr_t is
-    variable ret_val : ptr_t;
-    variable index   : positive := code'left;
-  begin
-    decode(code, index, ret_val);
-    return ret_val;
-  end;
-
-  procedure decode (
-    constant code   : string;
-    variable index  : inout positive;
-    variable result : out ptr_t
-  ) is begin
-    decode(code, index, result.ref);
+  impure function copy (
+    ptr : ptr_t
+  ) return ptr_t is begin
+    if ptr = null_string_ptr then
+      return ptr;
+    else
+      return new_string_ptr(to_string(ptr));
+    end if;
   end;
 
 end package body;

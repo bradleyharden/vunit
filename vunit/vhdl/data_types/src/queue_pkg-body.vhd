@@ -4,7 +4,8 @@
 --
 -- Copyright (c) 2014-2019, Lars Asplund lars.anders.asplund@gmail.com
 
-use work.codec_pkg.all;
+use work.type_pkg.all;
+use work.codec_builder_pkg.all;
 
 package body queue_pkg is
 
@@ -17,7 +18,7 @@ package body queue_pkg is
     return queue_t is
   begin
     return (p_meta => new_integer_vector_ptr(length => num_meta),
-            data   => new_integer_vector_ptr(length => 256, value => -1));
+            data   => new_string_ptr_vector_ptr(length => 256));
   end;
 
   impure function length (
@@ -55,18 +56,16 @@ package body queue_pkg is
   procedure flush (
     queue : queue_t
   ) is
-    variable ref : integer;
+    variable string_ptr : string_ptr_t;
   begin
     assert queue /= null_queue report "Flush null queue";
     set(queue.p_meta, head_idx, 0);
     set(queue.p_meta, tail_idx, 0);
     set(queue.p_meta, wrap_idx, 0);
     for i in 0 to length(queue.data) - 1 loop
-      ref := get(queue.data, i);
-      if ref >= 0 then
-        deallocate(to_string_ptr(ref));
-        set(queue.data, i, -1);
-      end if;
+      string_ptr := get(queue.data, i);
+      deallocate(string_ptr);
+      set(queue.data, i, null_string_ptr);
     end loop;
   end;
 
@@ -93,7 +92,7 @@ package body queue_pkg is
       set(queue.p_meta, tail_idx, tail);
       set(queue.p_meta, wrap_idx, wrap);
     end if;
-    set(queue.data, head, to_integer(value));
+    set(queue.data, head, value);
     head := head + 1;
     if head >= size then
       head := head mod size;
@@ -120,8 +119,8 @@ package body queue_pkg is
     size := length(queue.data);
     tail := get(queue.p_meta, tail_idx);
     wrap := get(queue.p_meta, wrap_idx);
-    data := to_string_ptr(get(queue.data, tail));
-    set(queue.data, tail, -1);
+    data := get(queue.data, tail);
+    set(queue.data, tail, null_string_ptr);
     tail := tail + 1;
     if tail >= size then
       tail := tail mod size;
@@ -139,87 +138,30 @@ package body queue_pkg is
   impure function copy (
     queue : queue_t
   ) return queue_t is
-    constant result : queue_t := new_queue;
-    variable tail   : natural;
-    variable size   : positive;
-    variable idx    : natural;
-    variable ptr    : string_ptr_t;
+    variable cpy : queue_t;
   begin
-    assert queue /= null_queue report "Copy null queue";
-    tail := get(queue.p_meta, tail_idx);
-    size := length(queue.data);
-    for i in 0 to length(queue) - 1 loop
-      idx := (tail + i) mod size;
-      ptr := to_string_ptr(get(queue.data, idx));
-      unsafe_push(result, new_string_ptr(to_string(ptr)));
-    end loop;
-    return result;
+    if queue = null_queue then
+      return queue;
+    else
+      cpy.p_meta := copy(queue.p_meta);
+      cpy.data := copy(queue.data);
+      return cpy;
+    end if;
   end;
 
   procedure deallocate (
     queue : inout queue_t
   ) is begin
     if queue /= null_queue then
-      flush(queue);
       deallocate(queue.p_meta);
       deallocate(queue.data);
       queue := null_queue;
     end if;
   end;
 
-  function encode (
-    data : queue_t
-  ) return string is begin
-    return encode(data.p_meta) & encode(data.data);
-  end;
-
-  procedure decode (
-    constant code   : string;
-    variable index  : inout positive;
-    variable result : out queue_t
-  ) is begin
-    decode(code, index, result.p_meta);
-    decode(code, index, result.data);
-  end;
-
-  function decode (
-    code : string
-  ) return queue_t is
-    variable ret_val : queue_t;
-    variable index   : positive := code'left;
-  begin
-    decode(code, index, ret_val);
-    return ret_val;
-  end;
-
-  function encode (
-    item_type : queue_item_type_t
-  ) return character is
-  begin
-    return character'val(queue_item_type_t'pos(item_type));
-  end;
-
-  function decode (
-    char : character
-  ) return queue_item_type_t is
-  begin
-    return queue_item_type_t'val(character'pos(char));
-  end;
-
-  procedure check_type (
-    got      : queue_item_type_t;
-    expected : queue_item_type_t
-  ) is
-  begin
-    if got /= expected then
-      report "Got queue item of type " & queue_item_type_t'image(got) &
-        ", expected " & queue_item_type_t'image(expected) & "." severity error;
-    end if;
-  end;
-
   procedure push_item (
     queue : queue_t;
-    value : string
+    value : item_t
   ) is
   begin
     unsafe_push(queue, new_string_ptr(value));
@@ -227,425 +169,438 @@ package body queue_pkg is
 
   impure function pop_item (
     queue : queue_t
-  ) return string is
-    constant ptr : string_ptr_t := unsafe_pop(queue);
-    constant str : string       := to_string(ptr);
+  ) return item_t is
+    variable ptr  : string_ptr_t := unsafe_pop(queue);
+    constant item : item_t := to_string(ptr);
   begin
     deallocate(ptr);
-    return str;
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : character
-  ) is begin
-    push_item(queue, encode(vhdl_character) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return character is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, vhdl_character);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : integer
-  ) is begin
-    push_item(queue, encode(vhdl_integer) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return integer is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, vhdl_integer);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push_byte (
-    queue : queue_t;
-    value : natural range 0 to 255
-  ) is begin
-    push_item(queue, encode(vunit_byte) & encode(character'val(value)));
-  end;
-
-  impure function pop_byte (
-    queue : queue_t
-  ) return integer is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, vunit_byte);
-    return character'pos(decode(str(2 to str'right)));
+    return item;
   end;
 
   procedure push (
     queue : queue_t;
     value : boolean
   ) is begin
-    push_item(queue, encode(vhdl_boolean) & encode(value));
+    push_item(queue, to_item(value));
   end;
 
   impure function pop (
     queue : queue_t
   ) return boolean is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
   begin
-    check_type(typ, vhdl_boolean);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : real
-  ) is begin
-    push_item(queue, encode(vhdl_real) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return real is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, vhdl_real);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
   end;
 
   procedure push (
     queue : queue_t;
     value : bit
   ) is begin
-    push_item(queue, encode(vhdl_bit) & encode(value));
+    push_item(queue, to_item(value));
   end;
 
   impure function pop (
     queue : queue_t
   ) return bit is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
   begin
-    check_type(typ, vhdl_bit);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : std_ulogic
-  ) is begin
-    push_item(queue, encode(ieee_std_ulogic) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return std_ulogic is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, ieee_std_ulogic);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : severity_level
-  ) is begin
-    push_item(queue, encode(vhdl_severity_level) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return severity_level is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, vhdl_severity_level);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : file_open_status
-  ) is begin
-    push_item(queue, encode(vhdl_file_open_status) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return file_open_status is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, vhdl_file_open_status);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : file_open_kind
-  ) is begin
-    push_item(queue, encode(vhdl_file_open_kind) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return file_open_kind is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, vhdl_file_open_kind);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
   end;
 
   procedure push (
     queue : queue_t;
     value : bit_vector
   ) is begin
-    push_item(queue, encode(vhdl_bit_vector) & encode(value));
+    push_item(queue, to_item(value));
   end;
 
   impure function pop (
     queue : queue_t
   ) return bit_vector is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
   begin
-    check_type(typ, vhdl_bit_vector);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
   end;
 
   procedure push (
     queue : queue_t;
-    value : std_ulogic_vector
+    value : character
   ) is begin
-    push_item(queue, encode(ieee_std_ulogic_vector) & encode(value));
+    push_item(queue, to_item(value));
   end;
 
   impure function pop (
     queue : queue_t
-  ) return std_ulogic_vector is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
+  ) return character is
   begin
-    check_type(typ, ieee_std_ulogic_vector);
-    report str;
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : complex
-  ) is begin
-    push_item(queue, encode(ieee_complex) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return complex is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, ieee_complex);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : complex_polar
-  ) is begin
-    push_item(queue, encode(ieee_complex_polar) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return complex_polar is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, ieee_complex_polar);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : ieee.numeric_bit.unsigned
-  ) is begin
-    push_item(queue, encode(ieee_numeric_bit_unsigned) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return ieee.numeric_bit.unsigned is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, ieee_numeric_bit_unsigned);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : ieee.numeric_bit.signed
-  ) is begin
-    push_item(queue, encode(ieee_numeric_bit_signed) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return ieee.numeric_bit.signed is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, ieee_numeric_bit_signed);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : ieee.numeric_std.unsigned
-  ) is begin
-    push_item(queue, encode(ieee_numeric_std_unsigned) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return ieee.numeric_std.unsigned is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, ieee_numeric_std_unsigned);
-    return decode(str(2 to str'right));
-  end;
-
-  procedure push (
-    queue : queue_t;
-    value : ieee.numeric_std.signed
-  ) is begin
-    push_item(queue, encode(ieee_numeric_std_signed) & encode(value));
-  end;
-
-  impure function pop (
-    queue : queue_t
-  ) return ieee.numeric_std.signed is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
-  begin
-    check_type(typ, ieee_numeric_std_signed);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
   end;
 
   procedure push (
     queue : queue_t;
     value : string
   ) is begin
-    push_item(queue, encode(vhdl_string) & encode(value));
+    push_item(queue, to_item(value));
   end;
 
   impure function pop (
     queue : queue_t
   ) return string is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
   begin
-    check_type(typ, vhdl_string);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : integer
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return integer is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : real
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return real is
+  begin
+    return from_item(pop_item(queue));
   end;
 
   procedure push (
     queue : queue_t;
     value : time
   ) is begin
-    push_item(queue, encode(vhdl_time) & encode(value));
+    push_item(queue, to_item(value));
   end;
 
   impure function pop (
     queue : queue_t
   ) return time is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
   begin
-    check_type(typ, vhdl_time);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
   end;
 
   procedure push (
     queue : queue_t;
-    variable value : inout integer_vector_ptr_t
+    value : severity_level
   ) is begin
-    push_item(queue, encode(vunit_integer_vector_ptr) & encode(value));
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return severity_level is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : file_open_status
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return file_open_status is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : file_open_kind
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return file_open_kind is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : ieee.numeric_bit.unsigned
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return ieee.numeric_bit.unsigned is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : ieee.numeric_bit.signed
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return ieee.numeric_bit.signed is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : complex
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return complex is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : complex_polar
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return complex_polar is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : std_ulogic
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return std_ulogic is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : std_ulogic_vector
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return std_ulogic_vector is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : ieee.numeric_std.unsigned
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return ieee.numeric_std.unsigned is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : ieee.numeric_std.signed
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return ieee.numeric_std.signed is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : type_t
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return type_t is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : range_t
+  ) is begin
+    push_item(queue, to_item(value));
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return range_t is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push_byte (
+    queue : queue_t;
+    value : natural range 0 to 255
+  ) is begin
+    push_item(queue, byte_to_item(value));
+  end;
+
+  impure function pop_byte (
+    queue : queue_t
+  ) return integer is
+  begin
+    return to_byte(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : inout integer_vector_ptr_t
+  ) is begin
+    push_item(queue, to_item(value));
     value := null_integer_vector_ptr;
   end;
 
   impure function pop (
     queue : queue_t
   ) return integer_vector_ptr_t is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
   begin
-    check_type(typ, vunit_integer_vector_ptr);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
   end;
 
   procedure push (
     queue : queue_t;
-    variable value : inout string_ptr_t
+    value : inout string_ptr_t
   ) is begin
-    push_item(queue, encode(vunit_string_ptr) & encode(value));
+    push_item(queue, to_item(value));
     value := null_string_ptr;
   end;
 
   impure function pop (
     queue : queue_t
   ) return string_ptr_t is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
   begin
-    check_type(typ, vunit_string_ptr);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
   end;
 
   procedure push (
     queue : queue_t;
-    variable value : inout queue_t
+    value : inout string_ptr_vector_ptr_t
   ) is begin
-    push_item(queue, encode(vunit_queue) & encode(value));
+    push_item(queue, to_item(value));
+    value := null_string_ptr_vector_ptr;
+  end;
+
+  impure function pop (
+    queue : queue_t
+  ) return string_ptr_vector_ptr_t is
+  begin
+    return from_item(pop_item(queue));
+  end;
+
+  procedure push (
+    queue : queue_t;
+    value : inout queue_t
+  ) is begin
+    push_item(queue, to_item(value));
     value := null_queue;
   end;
 
   impure function pop (
     queue : queue_t
   ) return queue_t is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
   begin
-    check_type(typ, vunit_queue);
-    return decode(str(2 to str'right));
+    return from_item(pop_item(queue));
   end;
 
-  procedure push (
-    constant queue : queue_t;
-    value : inout integer_array_t
+  -----------------------------------------------------------------------------
+  -- Codec procedures & functions
+  -----------------------------------------------------------------------------
+  procedure encode (
+    constant data  :       queue_t;
+    variable index : inout positive;
+    variable code  : inout string)
+  is
+  begin
+    encode(data.p_meta, index, code);
+    encode(data.data,   index, code);
+  end;
+
+  procedure decode (
+    constant code  :       string;
+    variable index : inout positive;
+    variable data  : out   queue_t
   ) is begin
-    push_item(queue, encode(vunit_integer_array) & encode(value));
-    value := null_integer_array;
+    decode(code, index, data.p_meta);
+    decode(code, index, data.data);
   end;
 
-  impure function pop (
-    queue : queue_t
-  ) return integer_array_t is
-    constant str : string := pop_item(queue);
-    constant typ : queue_item_type_t := decode(str(1));
+  function encode (
+    constant data : queue_t
+  ) return string is
+    variable index : positive := 1;
+    variable code  : string(1 to code_length(vunit_integer_vector_ptr) +
+                                 code_length(vunit_string_ptr_vector_ptr));
   begin
-    check_type(typ, vunit_integer_array);
-    return decode(str(2 to str'right));
+    encode(data, index, code);
+    return code;
+  end;
+
+  function decode (
+    constant code : string
+  ) return queue_t is
+    variable index : positive := code'left;
+    variable data  : queue_t;
+  begin
+    decode(code, index, data);
+    return data;
+  end;
+
+  -----------------------------------------------------------------------------
+  -- Item type conversion
+  -----------------------------------------------------------------------------
+  impure function to_item (
+    constant value : queue_t
+  ) return item_t is begin
+    return encode(vunit_queue) & encode(value);
+  end;
+
+  impure function from_item (
+    constant item : item_t
+  ) return queue_t is begin
+    return decode(trim_type(item, vunit_queue));
   end;
 
 end package body;

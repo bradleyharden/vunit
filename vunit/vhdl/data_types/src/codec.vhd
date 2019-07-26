@@ -15,10 +15,26 @@ use ieee.math_real.all;
 
 use std.textio.all;
 
-use work.types_pkg.all;
+use work.type_pkg.all;
 use work.codec_builder_pkg.all;
+use work.integer_vector_ptr_pkg.all;
+use work.string_ptr_pkg.all;
+use work.string_ptr_vector_ptr_pkg.all;
 
 package codec_pkg is
+  -----------------------------------------------------------------------------
+  -- Support
+  -----------------------------------------------------------------------------
+  type range_t is array (integer range <>) of bit;
+
+  function new_range (
+    constant left      : integer := 1;
+    constant right     : integer := 0;
+    constant ascending : boolean := true)
+    return range_t;
+
+  constant null_range : range_t := new_range;
+
   -----------------------------------------------------------------------------
   -- Predefined scalar types
   -----------------------------------------------------------------------------
@@ -142,6 +158,46 @@ package codec_pkg is
     return ieee.numeric_std.signed;
 
   -----------------------------------------------------------------------------
+  -- VUnit types
+  -----------------------------------------------------------------------------
+  function encode (
+    constant data : type_t)
+    return string;
+  function decode (
+    constant code : string)
+    return type_t;
+  function encode (
+    constant data : range_t)
+    return string;
+  function decode (
+    constant code : string)
+    return range_t;
+  function encode_byte (
+    constant data : natural range 0 to 255)
+    return string;
+  function decode_byte (
+    constant code : string)
+    return natural;
+  function encode (
+    constant data : integer_vector_ptr_t)
+    return string;
+  function decode (
+    constant code : string)
+    return integer_vector_ptr_t;
+  function encode (
+    constant data : string_ptr_t)
+    return string;
+  function decode (
+    constant code : string)
+    return string_ptr_t;
+  function encode (
+    constant data : string_ptr_vector_ptr_t)
+    return string;
+  function decode (
+    constant code : string)
+    return string_ptr_vector_ptr_t;
+
+  -----------------------------------------------------------------------------
   -- Aliases
   -----------------------------------------------------------------------------
   alias encode_integer is encode[integer return string];
@@ -184,25 +240,40 @@ package codec_pkg is
   alias encode_numeric_std_signed is encode[ieee.numeric_std.signed return string];
   alias decode_numeric_std_signed is decode[string return ieee.numeric_std.signed];
 
-  -----------------------------------------------------------------------------
-  -- Support
-  -----------------------------------------------------------------------------
-  function encode (
-    data : type_t)
-    return string;
-  function decode (
-    code : string)
-    return type_t;
-  function encode (
-    constant data : range_t)
-    return string;
-  function decode (
-    constant code : string)
-    return range_t;
+  alias encode_type_t is encode[type_t return string];
+  alias decode_type_t is decode[string return type_t];
+  alias encode_range_t is encode[range_t return string];
+  alias decode_range_t is decode[string return range_t];
+  alias encode_integer_vector_ptr_t is encode[integer_vector_ptr_t return string];
+  alias decode_integer_vector_ptr_t is decode[string return integer_vector_ptr_t];
+  alias encode_string_ptr_t is encode[string_ptr_t return string];
+  alias decode_string_ptr_t is decode[string return string_ptr_t];
+  alias encode_string_ptr_vector_ptr_t is encode[string_ptr_vector_ptr_t return string];
+  alias decode_string_ptr_vector_ptr_t is decode[string return string_ptr_vector_ptr_t];
 
 end package;
 
 package body codec_pkg is
+
+  -----------------------------------------------------------------------------
+  -- Support
+  -----------------------------------------------------------------------------
+  function new_range (
+    constant left      : integer := 1;
+    constant right     : integer := 0;
+    constant ascending : boolean := true)
+    return range_t
+  is
+    constant ascending_range : range_t(left to right) := (others => '0');
+    constant descending_range : range_t(left downto right) := (others => '0');
+  begin
+    if ascending then
+      return ascending_range;
+    else
+      return descending_range;
+    end if;
+  end;
+
   -----------------------------------------------------------------------------
   -- Predefined scalar types
   -----------------------------------------------------------------------------
@@ -645,10 +716,10 @@ package body codec_pkg is
   end;
 
   -----------------------------------------------------------------------------
-  -- Support
+  -- VUnit types
   -----------------------------------------------------------------------------
   function encode (
-    data : type_t)
+    constant data : type_t)
     return string
   is
     variable index : positive := 1;
@@ -659,7 +730,7 @@ package body codec_pkg is
   end;
 
   function decode (
-    code : string)
+    constant code : string)
     return type_t
   is
     variable index : positive := code'left;
@@ -695,6 +766,94 @@ package body codec_pkg is
     decode(code, index, right);
     decode(code, index, ascending);
     return new_range(left, right, ascending);
+  end;
+
+  function encode_byte (
+    constant data : natural range 0 to 255)
+    return string
+  is
+    variable index : positive := 1;
+    variable code  : string(1 to code_length(vunit_byte));
+  begin
+    encode_byte(data, index, code);
+    return code;
+  end;
+
+  function decode_byte (
+    constant code : string)
+    return natural
+  is
+    variable index : positive := code'left;
+    variable data  : natural range 0 to 255;
+  begin
+    decode_byte(code, index, data);
+    return data;
+  end;
+
+  function encode (
+    constant data : integer_vector_ptr_t)
+    return string
+  is
+    variable index : positive := 1;
+    variable code  : string(1 to code_length(vunit_integer_vector_ptr));
+  begin
+    encode(data, index, code);
+    return code;
+  end;
+
+  function decode (
+    constant code : string)
+    return integer_vector_ptr_t
+  is
+    variable index : positive := code'left;
+    variable data  : integer_vector_ptr_t;
+  begin
+    decode(code, index, data);
+    return data;
+  end;
+
+  function encode (
+    constant data : string_ptr_t)
+    return string
+  is
+    variable index : positive := 1;
+    variable code  : string(1 to code_length(vunit_string_ptr));
+  begin
+    encode(data, index, code);
+    return code;
+  end;
+
+  function decode (
+    constant code : string)
+    return string_ptr_t
+  is
+    variable index : positive := code'left;
+    variable data  : string_ptr_t;
+  begin
+    decode(code, index, data);
+    return data;
+  end;
+
+  function encode (
+    constant data : string_ptr_vector_ptr_t)
+    return string
+  is
+    variable index : positive := 1;
+    variable code  : string(1 to code_length(vunit_string_ptr_vector_ptr));
+  begin
+    encode(data, index, code);
+    return code;
+  end;
+
+  function decode (
+    constant code : string)
+    return string_ptr_vector_ptr_t
+  is
+    variable index : positive := code'left;
+    variable data  : string_ptr_vector_ptr_t;
+  begin
+    decode(code, index, data);
+    return data;
   end;
 
 end package body codec_pkg;

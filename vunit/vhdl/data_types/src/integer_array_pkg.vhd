@@ -5,6 +5,8 @@
 -- Copyright (c) 2014-2019, Lars Asplund lars.anders.asplund@gmail.com
 
 use work.integer_vector_ptr_pkg.all;
+use work.item_pkg.all;
+use work.queue_pkg.all;
 
 package integer_array_pkg is
   type integer_array_t is record
@@ -179,18 +181,28 @@ package integer_array_pkg is
     file_name : string
   );
 
-  function encode (
-    data : integer_array_t
-  ) return string;
+  impure function to_item (
+    constant value : integer_array_t
+  ) return item_t;
 
-  procedure decode (
-    code   : string;
-    index  : inout positive;
-    result : out   integer_array_t
-  );
-
-  function decode (
-    code : string
+  impure function from_item (
+    constant item : item_t
   ) return integer_array_t;
 
+  alias integer_array_t_to_item is to_item[integer_array_t return item_t];
+  alias to_integer_array_t is from_item[item_t return integer_array_t];
+
+  procedure push (
+    constant queue : queue_t;
+    value : inout integer_array_t
+  );
+
+  impure function pop (
+    queue : queue_t
+  ) return integer_array_t;
+
+  alias push_integer_array_t_ref is push[queue_t, integer_array_t];
+  alias pop_integer_array_t_ref is pop[queue_t return integer_array_t];
+
 end package;
+

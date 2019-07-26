@@ -8,6 +8,8 @@ use work.integer_vector_ptr_pool_pkg.all;
 use work.string_ptr_pool_pkg.all;
 use work.queue_pkg.all;
 use work.integer_vector_ptr_pkg.all;
+use work.string_ptr_pkg.all;
+use work.string_ptr_vector_ptr_pkg.all;
 
 package queue_pool_pkg is
 
@@ -51,10 +53,10 @@ package body queue_pool_pkg is
   begin
     queue := (
       p_meta => new_integer_vector_ptr(pool.index_pool, 3),
-      data => new_integer_vector_ptr(pool.data_pool, 256)
+      data => (p_ivp => new_integer_vector_ptr(pool.data_pool, 256))
     );
     for i in 0 to length(queue.data) - 1 loop
-      set(queue.data, i, -1);
+      set(queue.data, i, null_string_ptr);
     end loop;
     return queue;
   end;
@@ -65,7 +67,7 @@ package body queue_pool_pkg is
   ) is begin
     flush(queue);
     recycle(pool.index_pool, queue.p_meta);
-    recycle(pool.data_pool, queue.data);
+    recycle(pool.data_pool, queue.data.p_ivp);
   end;
 
 end package body;

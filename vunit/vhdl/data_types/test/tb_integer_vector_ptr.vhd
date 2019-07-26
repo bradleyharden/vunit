@@ -122,14 +122,6 @@ begin
       elsif run("test_from_and_to_integer") then
         ptr := new_integer_vector_ptr(2);
         assert to_integer_vector_ptr(to_integer(ptr)) = ptr;
-      elsif run("Test codecs") then
-        ptr := new_integer_vector_ptr(0);
-        check(decode(encode(ptr)) = ptr);
-
-        ptr2 := new_integer_vector_ptr(2);
-        set(ptr2, 0, another_random_value);
-        set(ptr2, 1, a_random_value);
-        check(decode(encode(ptr2)) = ptr2);
       end if;
     end loop;
 

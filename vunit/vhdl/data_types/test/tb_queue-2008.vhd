@@ -8,9 +8,8 @@ library ieee;
 use ieee.fixed_pkg.all;
 use ieee.float_pkg.all;
 
-library vunit_lib;
-context vunit_lib.vunit_context;
-
+use work.run_pkg.all;
+use work.check_pkg.all;
 use work.queue_pkg.all;
 use work.queue_2008_pkg.all;
 
