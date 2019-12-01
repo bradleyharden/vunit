@@ -1,0 +1,10 @@
+VHPIDIRECT {
+  global:
+main;
+oct_main;
+ghdl_main;
+ext_com_num_actors;
+ext_com_get_actor_item;
+  local:
+	*;
+};

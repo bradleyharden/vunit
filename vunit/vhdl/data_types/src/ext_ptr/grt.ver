@@ -1,0 +1,22 @@
+VHPIDIRECT {
+  global:
+main;
+oct_main;
+ghdl_main;
+ptr_new_vhpi;
+ptr_reallocate_vhpi;
+ptr_deallocate_vhpi;
+ptr_find_vhpi;
+ptr_bare_vhpi;
+ptr_length_vhpi;
+ptr_name_vhpi;
+ptr_name_len;
+ptr_resize_vhpi;
+ptr_copy_vhpi;
+ptr_get_char_vhpi;
+ptr_set_char_vhpi;
+ptr_get_int_vhpi;
+ptr_set_int_vhpi;
+  local:
+	*;
+};
