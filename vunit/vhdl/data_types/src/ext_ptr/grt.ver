@@ -9,8 +9,8 @@ VHPIDIRECT {
     vhpi_ptr_find;
     vhpi_ptr_name;
     vhpi_ptr_size;
-    vhpi_ptr_view_str;
-    vhpi_ptr_view_int;
+    vhpi_ptr_to_string;
+    vhpi_ptr_to_int_vec;
     vhpi_ptr_resize;
     vhpi_ptr_resize_char;
     vhpi_ptr_resize_int;

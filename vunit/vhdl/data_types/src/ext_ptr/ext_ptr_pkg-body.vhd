@@ -109,18 +109,18 @@ package body ext_ptr_pkg is
     return vhpi_ptr_size(ptr.ref);
   end;
 
-  impure function access_view (
+  impure function to_string (
     ptr : ext_ptr_t
-  ) return line is
+  ) return string is
   begin
-    return vhpi_ptr_view_str(ptr.ref);
+    return vhpi_ptr_to_string(ptr.ref);
   end;
 
-  impure function access_view (
+  impure function to_integer_vector (
     ptr : ext_ptr_t
-  ) return integer_vector_access_t is
+  ) return integer_vector_t is
   begin
-    return vhpi_ptr_view_int(ptr.ref);
+    return vhpi_ptr_to_int_vec(ptr.ref);
   end;
 
   procedure resize (
@@ -253,15 +253,15 @@ package body ext_ptr_pkg is
     assert false report "called VHPIDIRECT function" severity failure;
   end;
 
-  impure function vhpi_ptr_view_str (
+  impure function vhpi_ptr_to_string (
     ref : index_t
-  ) return line is begin
+  ) return string is begin
     assert false report "called VHPIDIRECT function" severity failure;
   end;
 
-  impure function vhpi_ptr_view_int (
+  impure function vhpi_ptr_to_int_vec (
     ref : index_t
-  ) return integer_vector_access_t is begin
+  ) return integer_vector_t is begin
     assert false report "called VHPIDIRECT function" severity failure;
   end;
 

@@ -10,12 +10,12 @@
 
 // Pointer storage data structure
 typedef struct {
-  char     *name;   // Unique name for pointer
-  uint32_t  size;   // Size of buffer, in bytes
-  access_t *access; // GHDL access type
+  char     *name;  // Unique name for pointer
+  uint32_t  size;  // Size of buffer, in bytes
+  void     *bare;  // Bare pointer
 } storage_item_t;
 
-#define NULL_STORAGE_ITEM (storage_item_t){.name=NULL, .size=0, .access=NULL}
+#define NULL_STORAGE_ITEM (storage_item_t){.name=NULL, .size=0, .bare=NULL}
 
 // Pointer storage container
 typedef struct {
@@ -55,7 +55,7 @@ stack_item_t *stack = NULL;
 // Verify that a given pointer is valid
 static inline void check_valid(ptr_t ptr) {
   assert(0 <= ptr.ref && ptr.ref < storage.index);
-  assert(storage.items[ptr.ref].access != NULL);
+  assert(storage.items[ptr.ref].bare != NULL);
 }
 
 // Reallocate storage array
@@ -95,13 +95,13 @@ ptr_t ptr_new(uint32_t size, const void *value, const char *name) {
   // Get the storage element and allocate the pointer
   storage_item_t *item = &storage.items[ptr.ref];
   item->size = size;
-  item->access = ghdl_new_access(size, 1);
-  assert(item->access != NULL);
+  item->bare = malloc(size);
+  assert(item->bare != NULL);
   // Copy the value, if it exists. Otherwise, set to zeros
   if (value == NULL)
-    memset(item->access->array, 0, item->size);
+    memset(item->bare, 0, item->size);
   else
-    memcpy(item->access->array, value, item->size);
+    memcpy(item->bare, value, item->size);
   // If user did not give name, use hex address with "<+/->" prefix
   if (name == NULL || strlen(name) == 0) {
     item->name = malloc(14);
@@ -119,15 +119,14 @@ ptr_t ptr_new(uint32_t size, const void *value, const char *name) {
 void ptr_reallocate(ptr_t ptr, uint32_t size, const void *value) {
   check_valid(ptr);
   storage_item_t *item = &storage.items[ptr.ref];
-  free(item->access);
   item->size = size;
-  item->access = ghdl_new_access(size, 1);
-  assert(item->access != NULL);
+  item->bare = realloc(item->bare, size);
+  assert(item->bare != NULL);
   // Copy the value, if it exists. Otherwise, set to zeros
   if (value == NULL)
-    memset(item->access->array, 0, item->size);
+    memset(item->bare, 0, item->size);
   else
-    memcpy(item->access->array, value, item->size);
+    memcpy(item->bare, value, item->size);
 }
 
 void ptr_deallocate(ptr_t *ptr) {
@@ -136,7 +135,7 @@ void ptr_deallocate(ptr_t *ptr) {
     storage_item_t *item = &storage.items[ptr->ref];
     // Delete pointer and free memory
     free(item->name);
-    free(item->access);
+    free(item->bare);
     *item = NULL_STORAGE_ITEM;
     // Add index to the stack of unused indices
     stack_item_t *head = malloc(sizeof(stack_item_t));
@@ -171,9 +170,9 @@ uint32_t ptr_size(ptr_t ptr) {
   return storage.items[ptr.ref].size;
 }
 
-void* ptr_array(ptr_t ptr) {
+void* ptr_bare(ptr_t ptr) {
   check_valid(ptr);
-  return storage.items[ptr.ref].access->array;
+  return storage.items[ptr.ref].bare;
 }
 
 void ptr_resize(ptr_t ptr, uint32_t new_size) {
@@ -181,10 +180,10 @@ void ptr_resize(ptr_t ptr, uint32_t new_size) {
   assert(new_size > 0);
   storage_item_t *old = &storage.items[ptr.ref];
   uint32_t min_size = old->size < new_size ? old->size : new_size;
-  access_t *new_access = ghdl_new_access(new_size, 1);
-  memcpy(new_access->array, old->access->array, min_size);
-  free(old->access);
-  old->access = new_access;
+  void *new_bare = malloc(new_size);
+  memcpy(new_bare, old->bare, min_size);
+  free(old->bare);
+  old->bare = new_bare;
   old->size = new_size;
 }
 
@@ -194,7 +193,8 @@ void ptr_resize_char(ptr_t ptr, uint32_t new_length, char value,
   assert(new_length > 0);
   assert(drop == 0 || rotate == 0);
   storage_item_t *old = &storage.items[ptr.ref];
-  access_t *new_access = ghdl_new_access(new_length, 1);
+  uint8_t *old_bare = old->bare;
+  uint8_t *new_bare = calloc(new_length, 1);
   uint32_t old_length = old->size;
   uint32_t min_length = old_length - drop;
   if (new_length < min_length)
@@ -202,13 +202,13 @@ void ptr_resize_char(ptr_t ptr, uint32_t new_length, char value,
   for (int i = 0; i < min_length; i++) {
     uint32_t old_index = (drop + rotate + i) % old_length;
     uint32_t new_index = i;
-    new_access->array[new_index] = old->access->array[old_index];
+    new_bare[new_index] = old_bare[old_index];
   }
   for (int i = min_length; i < new_length; i++) {
-    new_access->array[i] = value;
+    new_bare[i] = value;
   }
-  free(old->access);
-  old->access = new_access;
+  free(old->bare);
+  old->bare = new_bare;
   old->size = new_length;
 }
 
@@ -218,23 +218,22 @@ void ptr_resize_int(ptr_t ptr, uint32_t new_length, int32_t value,
   assert(new_length > 0);
   assert(drop == 0 || rotate == 0);
   storage_item_t *old = &storage.items[ptr.ref];
-  access_t *new_access = ghdl_new_access(new_length, 4);
+  int32_t *old_bare = old->bare;
+  int32_t *new_bare = calloc(new_length, 4);
   uint32_t old_length = old->size / 4;
   uint32_t min_length = old_length - drop;
   if (new_length < min_length)
     min_length = new_length;
-  int32_t *old_array = (int32_t *) old->access->array;
-  int32_t *new_array = (int32_t *) new_access->array;
   for (int i = 0; i < min_length; i++) {
     uint32_t old_index = (drop + rotate + i) % old_length;
     uint32_t new_index = i;
-    new_array[new_index] = old_array[old_index];
+    new_bare[new_index] = old_bare[old_index];
   }
   for (int i = min_length; i < new_length; i++) {
-    new_array[i] = value;
+    new_bare[i] = value;
   }
-  free(old->access);
-  old->access = new_access;
+  free(old->bare);
+  old->bare = new_bare;
   old->size = new_length * 4;
 }
 
@@ -244,7 +243,7 @@ ptr_t ptr_copy(ptr_t ptr, const char *name) {
   }
   else {
     storage_item_t *item = &storage.items[ptr.ref];
-    return ptr_new(item->size, item->access->array, name);
+    return ptr_new(item->size, item->bare, name);
   }
 }
 
@@ -285,30 +284,33 @@ uint32_t vhpi_ptr_size(int32_t ref) {
   return ptr_size(ptr);
 }
 
-access_t* vhpi_ptr_view_str(int32_t ref) {
+void vhpi_ptr_to_string(array_t *array, int32_t ref) {
   ptr_t ptr = {ref};
   check_valid(ptr);
   storage_item_t *item = &storage.items[ref];
-  uint32_t length = item->size;
-  range_t *range = &item->access->range;
+  range_t *range = malloc(sizeof(range_t));
+  assert(range != NULL);
   range->left = 1;
-  range->right = length;
+  range->right = item->size;
   range->dir = 0;
-  range->len = length;
-  return item->access;
+  range->len = item->size;
+  array->array = item->bare;
+  array->range = range;
 }
 
-access_t* vhpi_ptr_view_int(int32_t ref) {
+void vhpi_ptr_to_int_vec(array_t *array, int32_t ref) {
   ptr_t ptr = {ref};
   check_valid(ptr);
   storage_item_t *item = &storage.items[ref];
   uint32_t length = item->size / 4;
-  range_t *range = &item->access->range;
+  range_t *range = malloc(sizeof(range_t));
+  assert(range != NULL);
   range->left = 0;
   range->right = length - 1;
   range->dir = 0;
   range->len = length;
-  return item->access;
+  array->array = item->bare;
+  array->range = range;
 }
 
 void vhpi_ptr_resize(int32_t ref, uint32_t size) {
@@ -338,28 +340,28 @@ int32_t vhpi_ptr_copy(int32_t ref, const array_t *name) {
 uint8_t vhpi_ptr_get_char(int32_t ref, uint32_t index) {
   ptr_t ptr = {ref};
   check_valid(ptr);
-  uint8_t *array = storage.items[ref].access->array;
+  uint8_t *array = storage.items[ref].bare;
   return array[index];
 }
 
 void vhpi_ptr_set_char(int32_t ref, uint32_t index, uint8_t value) {
   ptr_t ptr = {ref};
   check_valid(ptr);
-  uint8_t *array = storage.items[ref].access->array;
+  uint8_t *array = storage.items[ref].bare;
   array[index] = value;
 }
 
 int32_t vhpi_ptr_get_int(int32_t ref, uint32_t index) {
   ptr_t ptr = {ref};
   check_valid(ptr);
-  int32_t *array = (int32_t *) storage.items[ref].access->array;
+  int32_t *array = (int32_t *) storage.items[ref].bare;
   return array[index];
 }
 
 void vhpi_ptr_set_int(int32_t ref, uint32_t index, int32_t value) {
   ptr_t ptr = {ref};
   check_valid(ptr);
-  int32_t *array = (int32_t *) storage.items[ref].access->array;
+  int32_t *array = storage.items[ref].bare;
   array[index] = value;
 }
 

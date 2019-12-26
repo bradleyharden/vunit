@@ -19,7 +19,7 @@ char* ptr_name(ptr_t ptr);
 
 uint32_t ptr_size(ptr_t ptr);
 
-void* ptr_array(ptr_t ptr);
+void* ptr_bare(ptr_t ptr);
 
 void ptr_resize(ptr_t ptr, uint32_t new_size);
 

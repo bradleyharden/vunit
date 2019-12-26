@@ -66,7 +66,7 @@ begin
         check(get_char(ptr_1, i - 1) = str(i));
       end loop;
 
-    elsif run("Get new ext_ptr from integer vector") then
+    elsif run("Get new ext_ptr from integer_vector") then
 
       for i in ints'range loop
         ints(i) := i;
@@ -105,7 +105,7 @@ begin
         check(get_char(ptr_1, i - 1) = str(i));
       end loop;
 
-    elsif run("Reallocate ext_ptr from integer vector") then
+    elsif run("Reallocate ext_ptr from integer_vector") then
 
       ptr_size := 8;
       ptr_1 := new_ext_ptr(ptr_size);
@@ -142,6 +142,24 @@ begin
       ptr_1 := new_ext_ptr(10, "test name");
       check(name(ptr_1) = "test name");
 
+    elsif run("Get string from ext_ptr") then
+
+      for i in str'range loop
+        str(i) := character'val(64 + i);
+      end loop;
+
+      ptr_1 := new_ext_ptr(str);
+      check(to_string(ptr_1) = str);
+
+    elsif run("Get integer_vector from ext_ptr") then
+
+      for i in ints'range loop
+        ints(i) := i;
+      end loop;
+
+      ptr_1 := new_ext_ptr(ints);
+      check(to_integer_vector(ptr_1) = ints);
+
     elsif run("Resize ext_ptr from size") then
 
       ptr_size := 10;
@@ -151,32 +169,6 @@ begin
       ptr_size := 20;
       resize(ptr_1, size => ptr_size);
       check_equal(size(ptr_1), ptr_size, result("for ext_ptr size"));
-
-    elsif run("Manipulate line view of ext_ptr") then
-
-      for i in str'range loop
-        str(i) := character'val(64 + i);
-      end loop;
-
-      ptr_1 := new_ext_ptr(str);
-      ptr_line := access_view(ptr_1);
-      check(ptr_line.all = str);
-
-      ptr_line(1) := 'Z';
-      check(get_char(ptr_1, 0) = 'Z');
-
-    elsif run("Manipulate integer_vector_access view of ext_ptr") then
-
-      for i in ints'range loop
-        ints(i) := i;
-      end loop;
-
-      ptr_1 := new_ext_ptr(ints);
-      ptr_iv_access := access_view(ptr_1);
-      check(ptr_iv_access.all = ints);
-
-      ptr_iv_access(0) := 1234;
-      check(get_int(ptr_1, 0) = 1234);
 
     elsif run("Resize ext_ptr with character value") then
 

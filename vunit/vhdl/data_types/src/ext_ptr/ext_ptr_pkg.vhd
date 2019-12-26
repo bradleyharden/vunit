@@ -78,13 +78,13 @@ package ext_ptr_pkg is
     ptr : ext_ptr_t
   ) return positive;
 
-  impure function access_view (
+  impure function to_string (
     ptr : ext_ptr_t
-  ) return line;
+  ) return string;
 
-  impure function access_view (
+  impure function to_integer_vector (
     ptr : ext_ptr_t
-  ) return integer_vector_access_t;
+  ) return integer_vector_t;
 
   procedure resize (
     ptr  : ext_ptr_t;
@@ -178,13 +178,13 @@ package ext_ptr_pkg is
     ref : index_t
   ) return positive;
 
-  impure function vhpi_ptr_view_str (
+  impure function vhpi_ptr_to_string (
     ref : index_t
-  ) return line;
+  ) return string;
 
-  impure function vhpi_ptr_view_int (
+  impure function vhpi_ptr_to_int_vec (
     ref : index_t
-  ) return integer_vector_access_t;
+  ) return integer_vector_t;
 
   procedure vhpi_ptr_resize (
     ref  : index_t;
@@ -242,8 +242,8 @@ package ext_ptr_pkg is
   attribute foreign of vhpi_ptr_find           : function  is "VHPIDIRECT vhpi_ptr_find";
   attribute foreign of vhpi_ptr_name           : function  is "VHPIDIRECT vhpi_ptr_name";
   attribute foreign of vhpi_ptr_size           : function  is "VHPIDIRECT vhpi_ptr_size";
-  attribute foreign of vhpi_ptr_view_str       : function  is "VHPIDIRECT vhpi_ptr_view_str";
-  attribute foreign of vhpi_ptr_view_int       : function  is "VHPIDIRECT vhpi_ptr_view_int";
+  attribute foreign of vhpi_ptr_to_string      : function  is "VHPIDIRECT vhpi_ptr_to_string";
+  attribute foreign of vhpi_ptr_to_int_vec     : function  is "VHPIDIRECT vhpi_ptr_to_int_vec";
   attribute foreign of vhpi_ptr_resize         : procedure is "VHPIDIRECT vhpi_ptr_resize";
   attribute foreign of vhpi_ptr_resize_char    : procedure is "VHPIDIRECT vhpi_ptr_resize_char";
   attribute foreign of vhpi_ptr_resize_int     : procedure is "VHPIDIRECT vhpi_ptr_resize_int";
