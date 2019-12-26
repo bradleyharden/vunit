@@ -15,13 +15,19 @@ void ptr_deallocate(ptr_t *ptr);
 
 ptr_t ptr_find(const char *name);
 
-void* ptr_bare(ptr_t ptr);
-
-uint32_t ptr_length(ptr_t ptr);
-
 char* ptr_name(ptr_t ptr);
 
-void ptr_resize(ptr_t ptr, uint32_t length, uint32_t drop, uint32_t rotate);
+uint32_t ptr_size(ptr_t ptr);
+
+void* ptr_array(ptr_t ptr);
+
+void ptr_resize(ptr_t ptr, uint32_t new_size);
+
+void ptr_resize_char(ptr_t ptr, uint32_t new_length, char value,
+                     uint32_t drop, uint32_t rotate);
+
+void ptr_resize_int(ptr_t ptr, uint32_t new_length, int32_t value,
+                    uint32_t drop, uint32_t rotate);
 
 ptr_t ptr_copy(ptr_t ptr, const char *name);
 

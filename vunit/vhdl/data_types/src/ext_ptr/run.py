@@ -17,6 +17,7 @@ print(popen("gcc -c ext_ptr.c -o ext_ptr.o").read())
 print(popen("gcc -c tb_ext_ptr.c -o tb_ext_ptr.o").read())
 
 vu = VUnit.from_argv(vhdl_standard="93")
+vu.enable_location_preprocessing()
 
 lib = vu.add_library("lib")
 lib.add_source_files("*.vhd")

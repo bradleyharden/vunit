@@ -1,22 +1,24 @@
 VHPIDIRECT {
   global:
-main;
-oct_main;
-ghdl_main;
-ptr_new_vhpi;
-ptr_reallocate_vhpi;
-ptr_deallocate_vhpi;
-ptr_find_vhpi;
-ptr_bare_vhpi;
-ptr_length_vhpi;
-ptr_name_vhpi;
-ptr_name_len;
-ptr_resize_vhpi;
-ptr_copy_vhpi;
-ptr_get_char_vhpi;
-ptr_set_char_vhpi;
-ptr_get_int_vhpi;
-ptr_set_int_vhpi;
+    main;
+    oct_main;
+    ghdl_main;
+    vhpi_ptr_new;
+    vhpi_ptr_reallocate;
+    vhpi_ptr_deallocate;
+    vhpi_ptr_find;
+    vhpi_ptr_name;
+    vhpi_ptr_size;
+    vhpi_ptr_view_str;
+    vhpi_ptr_view_int;
+    vhpi_ptr_resize;
+    vhpi_ptr_resize_char;
+    vhpi_ptr_resize_int;
+    vhpi_ptr_copy;
+    vhpi_ptr_get_char;
+    vhpi_ptr_set_char;
+    vhpi_ptr_get_int;
+    vhpi_ptr_set_int;
   local:
-	*;
+    *;
 };
