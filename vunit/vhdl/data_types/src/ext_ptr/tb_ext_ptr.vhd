@@ -34,8 +34,6 @@ begin
     variable ptr_2    : ext_ptr_t;
     variable str      : string(1 to 12);
     variable ints     : integer_vector_t(0 to 9);
-    variable loop1    : integer;
-    variable loop2    : integer;
     variable rotate   : integer;
     variable index    : integer;
     variable ptr_line : line;
@@ -240,13 +238,11 @@ begin
              rotate => rotate);
       check_equal(size(ptr_1), 2 * str'length, result("for ext_ptr size"));
 
-      loop1 := str'length - 1;
-      for i in 0 to loop1 loop
+      for i in 0 to str'length - 1 loop
         index := (i + rotate) mod str'length;
         check(get_char(ptr_1, i) = str(index + 1));
       end loop;
-      loop2 := 2 * str'length - 1;
-      for i in str'length to loop2 loop
+      for i in str'length to 2 * str'length - 1 loop
         check(get_char(ptr_1, i) = 'Z');
       end loop;
 
@@ -264,13 +260,11 @@ begin
              rotate => rotate);
       check_equal(size(ptr_1), 4 * 2 * ints'length, result("for ext_ptr size"));
 
-      loop1 := ints'length - 1;
-      for i in 0 to loop1 loop
+      for i in 0 to ints'length - 1 loop
         index := (i + rotate) mod ints'length;
         check(get_int(ptr_1, i) = ints(index));
       end loop;
-      loop2 := 2 * ints'length - 1;
-      for i in ints'length to loop2 loop
+      for i in ints'length to 2 * ints'length - 1 loop
         check(get_int(ptr_1, i) = 1234);
       end loop;
 

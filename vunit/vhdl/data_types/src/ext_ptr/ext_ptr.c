@@ -1,9 +1,6 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <string.h>
 #include <assert.h>
-#include "ghdl_types.h"
 #include "ext_ptr.h"
 
 #define DEFAULT_STORAGE_LENGTH 256
@@ -54,8 +51,15 @@ stack_item_t *stack = NULL;
 
 // Verify that a given pointer is valid
 static inline void check_valid(ptr_t ptr) {
-  assert(0 <= ptr.ref && ptr.ref < storage.index);
-  assert(storage.items[ptr.ref].bare != NULL);
+  if (ptr.ref < 0 || ptr.ref >= storage.index) {
+    printf("Attempted to access invalid or null ext_ptr (ref = %d)\n", ptr.ref);
+    exit(1);
+  }
+  if (storage.items[ptr.ref].bare == NULL) {
+    printf("Attempted to access unallocated ext_ptr with ref = %d "
+           " and name = %s.\n", ptr.ref, ptr_name(ptr));
+    exit(1);
+  }
 }
 
 // Reallocate storage array
@@ -73,8 +77,15 @@ void reallocate_storage(uint32_t new_length) {
   storage.length = new_length;
 }
 
-ptr_t ptr_new(uint32_t size, const void *value, const char *name) {
-  assert(size > 0);
+bool ptr_is_null(ptr_t ptr) {
+  return ptr.ref < 0;
+}
+
+ptr_t ptr_new(uint32_t size, const void *data, const char *name) {
+  if (size == 0) {
+    printf("ptr_new: size must be > 0\n");
+    exit(1);
+  }
   // Find a free index in the storage array
   ptr_t ptr;
   if (stack == NULL) {
@@ -97,11 +108,11 @@ ptr_t ptr_new(uint32_t size, const void *value, const char *name) {
   item->size = size;
   item->bare = malloc(size);
   assert(item->bare != NULL);
-  // Copy the value, if it exists. Otherwise, set to zeros
-  if (value == NULL)
+  // Copy the data, if it exists. Otherwise, set to zeros
+  if (data == NULL)
     memset(item->bare, 0, item->size);
   else
-    memcpy(item->bare, value, item->size);
+    memcpy(item->bare, data, item->size);
   // If user did not give name, use hex address with "<+/->" prefix
   if (name == NULL || strlen(name) == 0) {
     item->name = malloc(14);
@@ -116,17 +127,17 @@ ptr_t ptr_new(uint32_t size, const void *value, const char *name) {
   return ptr;
 }
 
-void ptr_reallocate(ptr_t ptr, uint32_t size, const void *value) {
+void ptr_reallocate(ptr_t ptr, uint32_t size, const void *data) {
   check_valid(ptr);
   storage_item_t *item = &storage.items[ptr.ref];
   item->size = size;
   item->bare = realloc(item->bare, size);
   assert(item->bare != NULL);
-  // Copy the value, if it exists. Otherwise, set to zeros
-  if (value == NULL)
+  // Copy the data, if it exists. Otherwise, set to zeros
+  if (data == NULL)
     memset(item->bare, 0, item->size);
   else
-    memcpy(item->bare, value, item->size);
+    memcpy(item->bare, data, item->size);
 }
 
 void ptr_deallocate(ptr_t *ptr) {
@@ -177,7 +188,10 @@ void* ptr_bare(ptr_t ptr) {
 
 void ptr_resize(ptr_t ptr, uint32_t new_size) {
   check_valid(ptr);
-  assert(new_size > 0);
+  if (new_size == 0) {
+    printf("ptr_resize: new_size must be > 0\n");
+    exit(1);
+  }
   storage_item_t *old = &storage.items[ptr.ref];
   uint32_t min_size = old->size < new_size ? old->size : new_size;
   void *new_bare = malloc(new_size);
@@ -190,8 +204,14 @@ void ptr_resize(ptr_t ptr, uint32_t new_size) {
 void ptr_resize_char(ptr_t ptr, uint32_t new_length, char value,
                      uint32_t drop, uint32_t rotate) {
   check_valid(ptr);
-  assert(new_length > 0);
-  assert(drop == 0 || rotate == 0);
+  if (new_length == 0) {
+    printf("ptr_resize_char: new_length must be > 0\n");
+    exit(1);
+  }
+  if (drop > 0 && rotate > 0) {
+    printf("ptr_resize_char: cannot use drop and rotate simulataneously\n");
+    exit(1);
+  }
   storage_item_t *old = &storage.items[ptr.ref];
   uint8_t *old_bare = old->bare;
   uint8_t *new_bare = calloc(new_length, 1);
@@ -215,8 +235,14 @@ void ptr_resize_char(ptr_t ptr, uint32_t new_length, char value,
 void ptr_resize_int(ptr_t ptr, uint32_t new_length, int32_t value,
                     uint32_t drop, uint32_t rotate) {
   check_valid(ptr);
-  assert(new_length > 0);
-  assert(drop == 0 || rotate == 0);
+  if (new_length == 0) {
+    printf("ptr_resize_int: new_length must be > 0\n");
+    exit(1);
+  }
+  if (drop > 0 && rotate > 0) {
+    printf("ptr_resize_int: cannot use drop and rotate simulataneously\n");
+    exit(1);
+  }
   storage_item_t *old = &storage.items[ptr.ref];
   int32_t *old_bare = old->bare;
   int32_t *new_bare = calloc(new_length, 4);
@@ -251,15 +277,15 @@ ptr_t ptr_copy(ptr_t ptr, const char *name) {
 //-----------------------------------------------------------------------------
 // VHPIDIRECT functions
 //-----------------------------------------------------------------------------
-int32_t vhpi_ptr_new(uint32_t size, const array_t *value, const array_t *name) {
+int32_t vhpi_ptr_new(uint32_t size, const array_t *data, const array_t *name) {
   char *c_name = ghdl_array_to_string(*name);
-  ptr_t ptr = ptr_new(size, value->array, c_name);
+  ptr_t ptr = ptr_new(size, data->value, c_name);
   return ptr.ref;
 }
 
-void vhpi_ptr_reallocate(int32_t ref, uint32_t size, const array_t *value) {
+void vhpi_ptr_reallocate(int32_t ref, uint32_t size, const array_t *data) {
   ptr_t ptr = {ref};
-  ptr_reallocate(ptr, size, value->array);
+  ptr_reallocate(ptr, size, data->value);
 }
 
 void vhpi_ptr_deallocate(int32_t ref) {
@@ -294,7 +320,7 @@ void vhpi_ptr_to_string(array_t *array, int32_t ref) {
   range->right = item->size;
   range->dir = 0;
   range->len = item->size;
-  array->array = item->bare;
+  array->value = item->bare;
   array->range = range;
 }
 
@@ -309,7 +335,7 @@ void vhpi_ptr_to_int_vec(array_t *array, int32_t ref) {
   range->right = length - 1;
   range->dir = 0;
   range->len = length;
-  array->array = item->bare;
+  array->value = item->bare;
   array->range = range;
 }
 

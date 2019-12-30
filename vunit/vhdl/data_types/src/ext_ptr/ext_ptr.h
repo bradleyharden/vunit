@@ -1,15 +1,22 @@
 #ifndef EXT_PTR_H
 #define EXT_PTR_H
 
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include "ghdl_types.h"
+
 typedef struct ptr_t {
   int32_t ref;  // Index into the storage array. If < 0, ptr is null
 } ptr_t;
 
 #define NULL_PTR (ptr_t){.ref = -1}
 
-ptr_t ptr_new(uint32_t length, const void *value, const char *name);
+bool ptr_is_null(ptr_t ptr);
 
-void ptr_reallocate(ptr_t ptr, uint32_t length, const void *value);
+ptr_t ptr_new(uint32_t length, const void *data, const char *name);
+
+void ptr_reallocate(ptr_t ptr, uint32_t length, const void *data);
 
 void ptr_deallocate(ptr_t *ptr);
 

@@ -13,10 +13,11 @@ from os.path import join, dirname
 path = dirname(__file__)
 
 # Compile C code
+print(popen("gcc -c ghdl_types.c -o ghdl_types.o").read())
 print(popen("gcc -c ext_ptr.c -o ext_ptr.o").read())
 print(popen("gcc -c tb_ext_ptr.c -o tb_ext_ptr.o").read())
 
-vu = VUnit.from_argv(vhdl_standard="93")
+vu = VUnit.from_argv(vhdl_standard="2008")
 vu.enable_location_preprocessing()
 
 lib = vu.add_library("lib")
@@ -26,6 +27,7 @@ lib.add_source_files("*.vhd")
 vu.set_sim_option(
     "ghdl.elab_flags",
     [
+        "-Wl,ghdl_types.o",
         "-Wl,ext_ptr.o",
         "-Wl,tb_ext_ptr.o",
         "-Wl,-Wl,--version-script=grt.ver"
